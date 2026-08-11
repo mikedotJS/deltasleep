@@ -17,6 +17,7 @@ final class SnapshotCodecTests: XCTestCase {
             measuredNightCount: 14,
             gapCount: 0,
             lastNightIsGap: false,
+            nightBars: [],
             computedAt: computedAt
         )
     }

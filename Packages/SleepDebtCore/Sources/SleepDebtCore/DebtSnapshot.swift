@@ -47,6 +47,14 @@ public struct DebtSnapshot: Equatable, Codable, Sendable {
     /// rule that made `debt` above equal yesterday's.
     public let lastNightIsGap: Bool
 
+    /// The 14-night strip's raw per-night bars (`NightStripMapping.Bar`),
+    /// oldest first, most recent last — persisted here rather than
+    /// recomputed by P6/P7 from scratch, since neither the widget nor a
+    /// cold-launched main screen has the raw `[Night]` history to derive
+    /// it from (the widget never touches HealthKit at all; see P2/P3).
+    /// Empty when there wasn't a full window to build bars from.
+    public let nightBars: [NightStripMapping.Bar]
+
     /// When this snapshot was computed. Supplied by the caller (P3), never
     /// read from the system clock inside this package — see
     /// `SleepDebtEngine.snapshot(nights:need:referenceDate:now:calendar:)`.
@@ -64,6 +72,7 @@ public struct DebtSnapshot: Equatable, Codable, Sendable {
         measuredNightCount: Int,
         gapCount: Int,
         lastNightIsGap: Bool,
+        nightBars: [NightStripMapping.Bar],
         computedAt: Date
     ) {
         self.referenceDate = referenceDate
@@ -77,6 +86,7 @@ public struct DebtSnapshot: Equatable, Codable, Sendable {
         self.measuredNightCount = measuredNightCount
         self.gapCount = gapCount
         self.lastNightIsGap = lastNightIsGap
+        self.nightBars = nightBars
         self.computedAt = computedAt
     }
 }

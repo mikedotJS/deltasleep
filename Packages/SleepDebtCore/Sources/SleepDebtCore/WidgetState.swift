@@ -12,7 +12,7 @@ import Foundation
 /// from "no sleep data has ever been observed" — the caller (the app, via
 /// P2 + P3) is responsible for deciding which of those is true before
 /// asking for a `WidgetState`.
-public enum HistoryAvailability: Equatable, Sendable {
+public enum HistoryAvailability: Equatable, Codable, Sendable {
     case sufficient
     case insufficient(measuredNights: Int, requiredNights: Int)
     case none

@@ -270,6 +270,12 @@ public enum SleepDebtEngine {
             }
         }
 
+        // Oldest first, most recent last — todayWindow itself is
+        // most-recent-first (index 0 = today), so this reverses it to
+        // match the strip's own left-to-right, "last bar is last night"
+        // convention (docs/IMPLEMENTATION_PLAN.md's P5/P6 scope).
+        let nightBars = todayWindow.reversed().map { NightStripMapping.bar(for: $0, need: need) }
+
         return DebtSnapshot(
             referenceDate: today,
             need: need,
@@ -282,6 +288,7 @@ public enum SleepDebtEngine {
             measuredNightCount: measuredCount,
             gapCount: gapCount,
             lastNightIsGap: lastNightIsGap,
+            nightBars: nightBars,
             computedAt: now
         )
     }

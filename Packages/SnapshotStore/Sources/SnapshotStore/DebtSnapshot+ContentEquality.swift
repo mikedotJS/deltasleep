@@ -20,5 +20,6 @@ extension DebtSnapshot {
             && measuredNightCount == other.measuredNightCount
             && gapCount == other.gapCount
             && lastNightIsGap == other.lastNightIsGap
+            && nightBars == other.nightBars
     }
 }

@@ -69,8 +69,17 @@ public enum RefreshCoordinator {
         // current window. This resolves D8's previously open sub-question
         // (docs/IMPLEMENTATION_PLAN.md, and issue #4's status note).
         let measuredCount = nights.filter { !$0.isGap }.count
-        guard measuredCount > 0 else { return .noData }
+        guard measuredCount > 0 else {
+            try store.writeHistoryAvailability(.none)
+            return .noData
+        }
         guard measuredCount >= DebtEngineConstants.minimumHistoryNights else {
+            try store.writeHistoryAvailability(
+                .insufficient(
+                    measuredNights: measuredCount,
+                    requiredNights: DebtEngineConstants.minimumHistoryNights
+                )
+            )
             return .insufficientHistory(
                 measuredNights: measuredCount,
                 requiredNights: DebtEngineConstants.minimumHistoryNights
@@ -89,9 +98,11 @@ public enum RefreshCoordinator {
             // couldn't compute a window ending on referenceDate — defensive
             // fallback rather than a crash, matching WidgetState.classify's
             // own nil handling.
+            try store.writeHistoryAvailability(.none)
             return .noData
         }
 
+        try store.writeHistoryAvailability(.sufficient)
         let previous = store.readSnapshot()
         let didChange = previous.map { !$0.hasSameContent(as: snapshot) } ?? true
         try store.writeSnapshot(snapshot)

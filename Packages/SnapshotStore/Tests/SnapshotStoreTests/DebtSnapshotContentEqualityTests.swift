@@ -4,7 +4,11 @@ import XCTest
 @testable import SnapshotStore
 
 final class DebtSnapshotContentEqualityTests: XCTestCase {
-    private func makeSnapshot(computedAt: Date, debtHours: Double = 2) -> DebtSnapshot {
+    private func makeSnapshot(
+        computedAt: Date,
+        debtHours: Double = 2,
+        nightBars: [NightStripMapping.Bar] = []
+    ) -> DebtSnapshot {
         DebtSnapshot(
             referenceDate: Date(timeIntervalSince1970: 0),
             need: SleepNeed(.hours(8)),
@@ -17,6 +21,7 @@ final class DebtSnapshotContentEqualityTests: XCTestCase {
             measuredNightCount: 14,
             gapCount: 0,
             lastNightIsGap: false,
+            nightBars: nightBars,
             computedAt: computedAt
         )
     }
@@ -30,6 +35,13 @@ final class DebtSnapshotContentEqualityTests: XCTestCase {
     func testADifferentDebtIsNotSameContent() {
         let a = makeSnapshot(computedAt: Date(timeIntervalSince1970: 0), debtHours: 2)
         let b = makeSnapshot(computedAt: Date(timeIntervalSince1970: 0), debtHours: 3)
+        XCTAssertFalse(a.hasSameContent(as: b))
+    }
+
+    func testDifferentNightBarsIsNotSameContent() {
+        let bar = NightStripMapping.Bar(isGap: false, isSurplus: true, fraction: 0.5)
+        let a = makeSnapshot(computedAt: Date(timeIntervalSince1970: 0), nightBars: [])
+        let b = makeSnapshot(computedAt: Date(timeIntervalSince1970: 0), nightBars: [bar])
         XCTAssertFalse(a.hasSameContent(as: b))
     }
 }

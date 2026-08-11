@@ -44,6 +44,7 @@ final class RefreshCoordinatorTests: XCTestCase {
     private final class InMemorySnapshotStore: SnapshotStoring, @unchecked Sendable {
         private(set) var snapshot: DebtSnapshot?
         private(set) var writeCount = 0
+        private(set) var historyAvailability: HistoryAvailability?
 
         func readSnapshot() -> DebtSnapshot? {
             snapshot
@@ -52,6 +53,14 @@ final class RefreshCoordinatorTests: XCTestCase {
         func writeSnapshot(_ snapshot: DebtSnapshot) throws {
             self.snapshot = snapshot
             writeCount += 1
+        }
+
+        func readHistoryAvailability() -> HistoryAvailability? {
+            historyAvailability
+        }
+
+        func writeHistoryAvailability(_ availability: HistoryAvailability) throws {
+            historyAvailability = availability
         }
     }
 
@@ -139,6 +148,7 @@ final class RefreshCoordinatorTests: XCTestCase {
         let samples = fullHistorySamples(
             forDays: 5, hours: 8, referenceDate: referenceDate, calendar: cal
         )
+        let store = InMemorySnapshotStore()
 
         let outcome = try await RefreshCoordinator.refresh(
             need: SleepNeed(.hours(8)),
@@ -146,16 +156,20 @@ final class RefreshCoordinatorTests: XCTestCase {
             now: referenceDate,
             calendar: cal,
             source: FakeSleepSource(samples: samples),
-            store: InMemorySnapshotStore(),
+            store: store,
             reloader: RecordingReloader()
         )
 
         XCTAssertEqual(outcome, .insufficientHistory(measuredNights: 5, requiredNights: 14))
+        XCTAssertEqual(
+            store.readHistoryAvailability(), .insufficient(measuredNights: 5, requiredNights: 14)
+        )
     }
 
     func testRefreshWithNoSamplesAtAllReturnsNoData() async throws {
         let cal = utcCalendar()
         let referenceDate = date(2026, 8, 11, calendar: cal)
+        let store = InMemorySnapshotStore()
 
         let outcome = try await RefreshCoordinator.refresh(
             need: SleepNeed(.hours(8)),
@@ -163,10 +177,32 @@ final class RefreshCoordinatorTests: XCTestCase {
             now: referenceDate,
             calendar: cal,
             source: FakeSleepSource(samples: []),
-            store: InMemorySnapshotStore(),
+            store: store,
             reloader: RecordingReloader()
         )
 
         XCTAssertEqual(outcome, .noData)
+        XCTAssertEqual(store.readHistoryAvailability(), .none)
+    }
+
+    func testRefreshWithSufficientHistoryWritesSufficientAvailability() async throws {
+        let cal = utcCalendar()
+        let referenceDate = date(2026, 8, 11, calendar: cal)
+        let samples = fullHistorySamples(
+            forDays: 21, hours: 8, referenceDate: referenceDate, calendar: cal
+        )
+        let store = InMemorySnapshotStore()
+
+        _ = try await RefreshCoordinator.refresh(
+            need: SleepNeed(.hours(8)),
+            referenceDate: referenceDate,
+            now: referenceDate,
+            calendar: cal,
+            source: FakeSleepSource(samples: samples),
+            store: store,
+            reloader: RecordingReloader()
+        )
+
+        XCTAssertEqual(store.readHistoryAvailability(), .sufficient)
     }
 }

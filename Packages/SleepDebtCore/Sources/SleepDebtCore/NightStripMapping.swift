@@ -17,7 +17,7 @@ public enum NightStripMapping {
     /// sliver, not invisible.
     public static let minimumVisibleFraction = 0.08
 
-    public struct Bar: Equatable, Sendable {
+    public struct Bar: Equatable, Codable, Sendable {
         public let isGap: Bool
         /// `true` = above the axis (slept more than `need`). Meaningless
         /// when `isGap` is true.

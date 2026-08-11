@@ -43,6 +43,8 @@ identifier_name:
     - b
     - c
     - d
+    - x
+    - y
 
 # SleepDebtEngine.snapshot() legitimately assembles a full DebtSnapshot
 # from several independent pieces (trend, break-even, both deltas) —
@@ -66,3 +68,14 @@ file_length:
 type_body_length:
   warning: 500
   error: 650
+
+# RefreshCoordinator.refresh() ties together the calendar/clock inputs
+# (referenceDate, now, calendar), the D8 need-change flag, and the three
+# collaborators it's tested against fakes for (source, store, reloader) —
+# each is independently meaningful and independently faked in tests;
+# bundling them into a parameter object would just move the same count
+# into a struct literal at every call site. Default warning is 5
+# (ignoring needChangedToday's default value, this function has 7).
+function_parameter_count:
+  warning: 8
+  error: 10

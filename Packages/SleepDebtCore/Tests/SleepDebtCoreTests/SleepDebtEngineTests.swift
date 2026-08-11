@@ -493,6 +493,54 @@ final class SleepDebtEngineTests: XCTestCase {
         XCTAssertFalse(result.lastNightIsGap)
     }
 
+    // MARK: - Night strip bars (P6's widget-strip data)
+
+    func testNightBarsHasOneEntryPerWindowNight() throws {
+        let cal = utcCalendar()
+        let today = date(2026, 8, 11, calendar: cal)
+        let need = SleepNeed(.hm(8, 0))
+        let nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(8, 0))
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        XCTAssertEqual(result.nightBars.count, 14)
+    }
+
+    func testNightBarsAreOrderedOldestFirstMostRecentLast() throws {
+        let cal = utcCalendar()
+        let today = date(2026, 8, 11, calendar: cal)
+        let need = SleepNeed(.hm(8, 0))
+        // Every night sleeps exactly at need (a flat, un-telling fixture)
+        // except last night, which surpluses hard — since surplus/deficit
+        // is what a bar's isSurplus encodes, this pins which end of the
+        // array is "last night" unambiguously.
+        var nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(8, 0))
+        nights[0] = .measured(date: today, asleep: .hm(10, 0))
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        XCTAssertTrue(result.nightBars.last?.isSurplus ?? false)
+        for bar in result.nightBars.dropLast() {
+            XCTAssertFalse(bar.isSurplus)
+        }
+    }
+
+    func testNightBarsMarksGapNightsAsGaps() throws {
+        let cal = utcCalendar()
+        let today = date(2026, 8, 11, calendar: cal)
+        let need = SleepNeed(.hm(8, 0))
+        var nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(7, 0))
+        let gapDay = try day(offset: 5, before: today, calendar: cal)
+        nights[5] = .gap(date: gapDay)
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        // offset 5 before today lands at index (14 - 1 - 5) = 8 once
+        // reversed to oldest-first.
+        XCTAssertTrue(result.nightBars[8].isGap)
+        XCTAssertEqual(result.nightBars.filter(\.isGap).count, 1)
+    }
+
     // MARK: - WidgetState classification
 
     func testWidgetStateNominalForAnOrdinaryReading() throws {

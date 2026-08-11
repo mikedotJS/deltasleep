@@ -31,6 +31,7 @@ final class FileSnapshotStoreTests: XCTestCase {
             measuredNightCount: 14,
             gapCount: 0,
             lastNightIsGap: false,
+            nightBars: [],
             computedAt: Date(timeIntervalSince1970: 1000)
         )
     }
@@ -67,5 +68,26 @@ final class FileSnapshotStoreTests: XCTestCase {
         try FileSnapshotStore(directory: tempDirectory).writeSnapshot(makeSnapshot(debtHours: 4))
         let reader = FileSnapshotStore(directory: tempDirectory)
         XCTAssertEqual(reader.readSnapshot()?.debt, .hours(4))
+    }
+
+    func testHistoryAvailabilityReadBeforeAnyWriteIsNil() {
+        let store = FileSnapshotStore(directory: tempDirectory)
+        XCTAssertNil(store.readHistoryAvailability())
+    }
+
+    func testHistoryAvailabilityWriteThenReadRoundTrips() throws {
+        let store = FileSnapshotStore(directory: tempDirectory)
+        try store.writeHistoryAvailability(.insufficient(measuredNights: 6, requiredNights: 14))
+        XCTAssertEqual(
+            store.readHistoryAvailability(), .insufficient(measuredNights: 6, requiredNights: 14)
+        )
+    }
+
+    func testHistoryAvailabilityIsStoredIndependentlyOfTheSnapshot() throws {
+        let store = FileSnapshotStore(directory: tempDirectory)
+        try store.writeSnapshot(makeSnapshot(debtHours: 2))
+        try store.writeHistoryAvailability(.sufficient)
+        XCTAssertNotNil(store.readSnapshot())
+        XCTAssertEqual(store.readHistoryAvailability(), .sufficient)
     }
 }
