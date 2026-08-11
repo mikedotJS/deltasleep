@@ -47,6 +47,11 @@ public struct DebtSnapshot: Equatable, Codable, Sendable {
     /// rule that made `debt` above equal yesterday's.
     public let lastNightIsGap: Bool
 
+    /// Raw time asleep last night — the mockup's "Cette nuit" stat row
+    /// (P7). Distinct from anything the debt formula itself uses: `nil`
+    /// exactly when `lastNightIsGap` is true, never a stand-in zero.
+    public let lastNightSleepDuration: SleepDuration?
+
     /// The 14-night strip's raw per-night bars (`NightStripMapping.Bar`),
     /// oldest first, most recent last — persisted here rather than
     /// recomputed by P6/P7 from scratch, since neither the widget nor a
@@ -72,6 +77,7 @@ public struct DebtSnapshot: Equatable, Codable, Sendable {
         measuredNightCount: Int,
         gapCount: Int,
         lastNightIsGap: Bool,
+        lastNightSleepDuration: SleepDuration?,
         nightBars: [NightStripMapping.Bar],
         computedAt: Date
     ) {
@@ -86,6 +92,7 @@ public struct DebtSnapshot: Equatable, Codable, Sendable {
         self.measuredNightCount = measuredNightCount
         self.gapCount = gapCount
         self.lastNightIsGap = lastNightIsGap
+        self.lastNightSleepDuration = lastNightSleepDuration
         self.nightBars = nightBars
         self.computedAt = computedAt
     }

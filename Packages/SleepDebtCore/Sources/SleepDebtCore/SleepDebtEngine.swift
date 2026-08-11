@@ -288,6 +288,7 @@ public enum SleepDebtEngine {
             measuredNightCount: measuredCount,
             gapCount: gapCount,
             lastNightIsGap: lastNightIsGap,
+            lastNightSleepDuration: todayWindow[0].asleep,
             nightBars: nightBars,
             computedAt: now
         )

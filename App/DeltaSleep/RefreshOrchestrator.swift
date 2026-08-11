@@ -9,22 +9,22 @@ import SnapshotStore
 /// exactly one code path that fetches, computes, persists, and reloads
 /// widget timelines (docs/IMPLEMENTATION_PLAN.md §5, P3).
 ///
-/// Two things here are deliberate placeholders, not the finished feature:
-/// the sleep-need value is hardcoded to the mockup's own default (8h) until
-/// P7 adds real persistence and a settings screen, and requesting HealthKit
-/// authorization here is only the minimum needed for the app to function
-/// end to end before P8 builds the real first-run flow and copy.
+/// Requesting HealthKit authorization here is only the minimum needed
+/// for the app to function end to end before P8 builds the real
+/// first-run flow and copy — that's still a deliberate placeholder.
 final class RefreshOrchestrator: @unchecked Sendable {
     private static let didRequestAuthorizationKey = "didRequestHealthKitAuthorization"
 
     private let source: HealthKitSleepSource
     private let store: SnapshotStoring
     private let reloader: WidgetReloading
+    private let needStore: SleepNeedStore
     private let calendar: Calendar
     private let userDefaults: UserDefaults
 
     init(
         store: SnapshotStoring,
+        needStore: SleepNeedStore = SleepNeedStore(),
         source: HealthKitSleepSource = HealthKitSleepSource(),
         reloader: WidgetReloading = WidgetCenterReloader(),
         calendar: Calendar = .current,
@@ -33,6 +33,7 @@ final class RefreshOrchestrator: @unchecked Sendable {
         self.source = source
         self.store = store
         self.reloader = reloader
+        self.needStore = needStore
         self.calendar = calendar
         self.userDefaults = userDefaults
     }
@@ -59,10 +60,17 @@ final class RefreshOrchestrator: @unchecked Sendable {
     /// observer — foreground refresh is the correctness guarantee (see
     /// issue #2's S2 status note); background delivery is a latency
     /// optimisation on top of it, not a dependency of it.
-    func refreshNow() async {
+    ///
+    /// `needChangedToday` is passed straight through to
+    /// `RefreshCoordinator.refresh` — set it when this refresh is the one
+    /// immediately following a sleep-need edit (P7), so `Trend` freezes
+    /// for today rather than a settings change alone painting the figure
+    /// green or red.
+    func refreshNow(needChangedToday: Bool = false) async {
         let now = Date()
         _ = try? await RefreshCoordinator.refresh(
-            need: SleepNeed(.hours(8)),
+            need: needStore.current,
+            needChangedToday: needChangedToday,
             referenceDate: now,
             now: now,
             calendar: calendar,

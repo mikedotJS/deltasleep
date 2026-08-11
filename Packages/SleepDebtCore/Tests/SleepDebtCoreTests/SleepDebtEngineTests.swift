@@ -493,6 +493,37 @@ final class SleepDebtEngineTests: XCTestCase {
         XCTAssertFalse(result.lastNightIsGap)
     }
 
+    // MARK: - Last night's raw sleep duration (P7's "Cette nuit" stat row)
+
+    func testLastNightSleepDurationIsLastNightsRawAsleepTime() throws {
+        let cal = utcCalendar()
+        let today = date(2026, 8, 11, calendar: cal)
+        let need = SleepNeed(.hm(8, 0))
+        var nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(7, 0))
+        nights[0] = .measured(date: today, asleep: .hm(6, 12))
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        XCTAssertEqual(
+            result.lastNightSleepDuration?.seconds, SleepDuration.hm(6, 12).seconds, accuracy: 0.001
+        )
+    }
+
+    func testLastNightSleepDurationIsNilWhenLastNightIsAGap() throws {
+        let cal = utcCalendar()
+        let today = date(2026, 8, 11, calendar: cal)
+        let need = SleepNeed(.hm(8, 0))
+        var nights: [Night] = []
+        for offset in 0 ..< 15 {
+            let day = try day(offset: offset, before: today, calendar: cal)
+            nights.append(offset == 0 ? .gap(date: day) : .measured(date: day, asleep: .hm(7, 0)))
+        }
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        XCTAssertNil(result.lastNightSleepDuration)
+    }
+
     // MARK: - Night strip bars (P6's widget-strip data)
 
     func testNightBarsHasOneEntryPerWindowNight() throws {

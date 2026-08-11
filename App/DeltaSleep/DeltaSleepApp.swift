@@ -6,6 +6,8 @@ import SwiftUI
 struct DeltaSleepApp: App {
     @Environment(\.scenePhase) private var scenePhase
     private let orchestrator: RefreshOrchestrator
+    private let store: SnapshotStoring
+    private let needStore: SleepNeedStore
 
     init() {
         // Falls back to a temp directory when the App Group entitlement
@@ -13,13 +15,21 @@ struct DeltaSleepApp: App {
         // bundle IDs are still placeholders) rather than crashing; the app
         // just behaves as if no snapshot has ever been cached.
         let directory = AppGroup.containerURL() ?? FileManager.default.temporaryDirectory
-        orchestrator = RefreshOrchestrator(store: FileSnapshotStore(directory: directory))
+        let resolvedStore = FileSnapshotStore(directory: directory)
+        let resolvedNeedStore = SleepNeedStore()
+        store = resolvedStore
+        needStore = resolvedNeedStore
+        orchestrator = RefreshOrchestrator(store: resolvedStore, needStore: resolvedNeedStore)
     }
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .task { await orchestrator.start() }
+            MainScreenView(
+                viewModel: MainScreenViewModel(
+                    store: store, needStore: needStore, orchestrator: orchestrator
+                )
+            )
+            .task { await orchestrator.start() }
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
