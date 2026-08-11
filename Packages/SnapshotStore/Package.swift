@@ -11,9 +11,10 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../SleepDebtCore"),
+        .package(path: "../HealthSleepSource"),
     ],
     targets: [
-        .target(name: "SnapshotStore", dependencies: ["SleepDebtCore"]),
+        .target(name: "SnapshotStore", dependencies: ["SleepDebtCore", "HealthSleepSource"]),
         .testTarget(name: "SnapshotStoreTests", dependencies: ["SnapshotStore"]),
     ]
 )

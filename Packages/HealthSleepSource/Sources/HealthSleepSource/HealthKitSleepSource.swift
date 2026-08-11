@@ -16,6 +16,13 @@ public final class HealthKitSleepSource: SleepDataSource, @unchecked Sendable {
     private let healthStore: HKHealthStore
     private let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
 
+    /// `HKObserverQuery` must be kept alive by the caller for as long as
+    /// observation should continue — HealthKit doesn't retain it. Storing
+    /// it here means `startObservingChanges` callers (P3's
+    /// `RefreshOrchestrator`) don't have to manage that lifetime
+    /// themselves.
+    private var observerQuery: HKObserverQuery?
+
     public init(healthStore: HKHealthStore = HKHealthStore()) {
         self.healthStore = healthStore
     }
@@ -26,6 +33,33 @@ public final class HealthKitSleepSource: SleepDataSource, @unchecked Sendable {
 
     public func requestAuthorization() async throws {
         try await healthStore.requestAuthorization(toShare: [], read: [sleepType])
+    }
+
+    /// Registers a long-lived `HKObserverQuery` on sleep-analysis data and
+    /// requests immediate background delivery (P3,
+    /// docs/IMPLEMENTATION_PLAN.md §5) — "the number is right when you
+    /// glance at the widget after waking" depends on this firing shortly
+    /// after a night syncs, though S2 (issue #2) found no platform
+    /// guarantee on exactly how shortly.
+    ///
+    /// `onUpdate` runs on HealthKit's own background queue every time new
+    /// sleep-analysis data is written, and is passed a completion closure
+    /// it must call once its own refresh work is done — `HKObserverQuery`
+    /// requires that acknowledgement to avoid the app being throttled for
+    /// unresponsive background delivery.
+    public func startObservingChanges(
+        onUpdate: @escaping (@escaping @Sendable () -> Void) -> Void
+    ) {
+        let query = HKObserverQuery(sampleType: sleepType, predicate: nil) { _, completion, error in
+            guard error == nil else {
+                completion()
+                return
+            }
+            onUpdate(completion)
+        }
+        observerQuery = query
+        healthStore.execute(query)
+        healthStore.enableBackgroundDelivery(for: sleepType, frequency: .immediate) { _, _ in }
     }
 
     /// HealthKit's own record of whether `sleepAnalysis` read access has
