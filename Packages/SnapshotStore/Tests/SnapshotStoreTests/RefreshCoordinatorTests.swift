@@ -45,7 +45,9 @@ final class RefreshCoordinatorTests: XCTestCase {
         private(set) var snapshot: DebtSnapshot?
         private(set) var writeCount = 0
 
-        func readSnapshot() -> DebtSnapshot? { snapshot }
+        func readSnapshot() -> DebtSnapshot? {
+            snapshot
+        }
 
         func writeSnapshot(_ snapshot: DebtSnapshot) throws {
             self.snapshot = snapshot

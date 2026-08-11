@@ -10,7 +10,13 @@
 // `HealthAuthorizationState`) is tested instead.
 #if canImport(HealthKit)
 import Foundation
-import HealthKit
+// @preconcurrency: HKObserverQuery's completion handler
+// (HKObserverQueryCompletionHandler) isn't @Sendable-annotated in this
+// SDK, but startObservingChanges forwards it into a caller-supplied
+// @Sendable closure (RefreshOrchestrator bridges it across a `Task {}`)
+// — without this, the compiler rejects passing that non-Sendable
+// completion handler where a @Sendable one is expected.
+@preconcurrency import HealthKit
 
 public final class HealthKitSleepSource: SleepDataSource, @unchecked Sendable {
     private let healthStore: HKHealthStore
