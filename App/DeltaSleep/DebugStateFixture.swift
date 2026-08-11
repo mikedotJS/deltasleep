@@ -19,7 +19,9 @@ enum DebugStateFixture: String, CaseIterable, Identifiable {
     case insufficientHistory = "Historique insuffisant"
     case nightMissing = "Nuit manquante"
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     /// Writes this fixture, then reloads widget timelines — the same
     /// two effects a real refresh has, so both the app (on its next
