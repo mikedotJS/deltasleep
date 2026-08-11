@@ -29,23 +29,34 @@ public struct DebtFigure: View {
     private let hours: Int
     private let minutes: Int
     private let tint: GlassTint
-    private let size: Size
+
+    /// Dynamic Type (P9): scales with the environment's type size, so the
+    /// phone screen's figure grows through the accessibility sizes; a
+    /// widget's own Dynamic Type range is clamped by its host view (see
+    /// `WidgetContent`'s doc comment), which keeps this from overflowing
+    /// the widget's fixed frame without this view needing to know it's
+    /// inside one. `size` itself (widget vs. phone) is only needed here,
+    /// to seed the starting point each scales from — the rendered body
+    /// reads these, not the enum.
+    @ScaledMetric private var figureSize: CGFloat
+    @ScaledMetric private var unitSize: CGFloat
 
     public init(hours: Int, minutes: Int, tint: GlassTint, size: Size) {
         self.hours = hours
         self.minutes = minutes
         self.tint = tint
-        self.size = size
+        _figureSize = ScaledMetric(wrappedValue: size.figureSize)
+        _unitSize = ScaledMetric(wrappedValue: size.unitSize)
     }
 
     public var body: some View {
         let palette = GlassTokens.palette(for: tint)
         let hoursText = Text("\(hours)")
-            .font(numeralFont(pointSize: size.figureSize))
+            .font(numeralFont(pointSize: figureSize))
         let unitText = Text("h")
-            .font(.system(size: size.unitSize, weight: .medium, design: .rounded))
+            .font(.system(size: unitSize, weight: .medium, design: .rounded))
         let minutesText = Text(Self.formattedMinutes(minutes))
-            .font(numeralFont(pointSize: size.figureSize))
+            .font(numeralFont(pointSize: figureSize))
         (hoursText + unitText + minutesText)
             .foregroundStyle(figureGradient(figureEnd: palette.figureGradientEnd.color))
             .shadow(color: .black.opacity(0.28), radius: 5, x: 0, y: 2)

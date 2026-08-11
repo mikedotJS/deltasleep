@@ -11,6 +11,17 @@ import UIKit
 struct MainScreenView: View {
     @State private var viewModel: MainScreenViewModel
 
+    // Dynamic Type (docs/IMPLEMENTATION_PLAN.md §5, P9): every body-copy
+    // size this screen owns directly (GlassKit's own text scales itself
+    // — see `DebtFigure`/`StateMessage`), so the phone screen honours
+    // the full range through the accessibility sizes, unlike the
+    // widget's clamped one.
+    @ScaledMetric private var labelSize: CGFloat = 10
+    @ScaledMetric private var bodySize: CGFloat = 13.5
+    @ScaledMetric private var captionSize: CGFloat = 12.5
+    @ScaledMetric private var bigNumberSize: CGFloat = 24
+    @ScaledMetric private var smallSize: CGFloat = 13
+
     init(viewModel: MainScreenViewModel) {
         _viewModel = State(initialValue: viewModel)
     }
@@ -54,11 +65,11 @@ struct MainScreenView: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
             Text("DETTE DE SOMMEIL")
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: labelSize, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.72))
             Spacer()
             Text("14 NUITS")
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: labelSize, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.45))
         }
     }
@@ -99,19 +110,24 @@ struct MainScreenView: View {
                     title: "Autoriser l'accès au sommeil",
                     subtitle: "Réglages → Santé → Accès aux données"
                 )
+                .accessibilityElement(children: .combine)
                 Button("Ouvrir les réglages", action: openSettings)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: smallSize, weight: .semibold))
                     .foregroundStyle(.white)
             }
         case let .insufficientHistory(measured, required):
             VStack(alignment: .leading, spacing: 8) {
                 Text("\(measured) nuits sur \(required)")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .font(.system(size: bigNumberSize, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                 Text("Lecture à partir de \(required)")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: smallSize, weight: .medium))
                     .foregroundStyle(.white.opacity(0.7))
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(
+                insufficientHistoryAccessibilityLabel(measured: measured, required: required)
+            )
         case let .nightMissing(debt):
             PhoneFigureSection(
                 debt: debt,
@@ -122,6 +138,21 @@ struct MainScreenView: View {
                 nightBars: viewModel.snapshot?.nightBars ?? []
             )
         }
+    }
+
+    /// FR + EN strings (P9, D9) — this and the other dynamic accessibility
+    /// labels below build their copy with `String(localized:)` rather than
+    /// plain interpolation, so a translator working from the string
+    /// catalog can retranslate them like any other user-facing text
+    /// (unlike a plain `String`, which VoiceOver would speak in French
+    /// regardless of the device's language).
+    private func insufficientHistoryAccessibilityLabel(measured: Int, required: Int) -> String {
+        String(
+            localized: """
+            Historique insuffisant : \(measured) nuits sur \(required). \
+            Lecture à partir de \(required) nuits.
+            """
+        )
     }
 
     private func statRows(snapshot: DebtSnapshot) -> some View {
@@ -138,14 +169,18 @@ struct MainScreenView: View {
         }
     }
 
-    private func statRow(_ label: String, value: String) -> some View {
+    // `label` is `LocalizedStringKey` (every call site passes a literal),
+    // `value` stays plain `String` — it's already-formatted, genuinely
+    // dynamic copy (a duration or a count), not translatable source text
+    // (P9, D9; same reasoning as `StateMessage`'s fields).
+    private func statRow(_ label: LocalizedStringKey, value: String) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 13.5))
+                .font(.system(size: bodySize))
                 .foregroundStyle(.white.opacity(0.82))
             Spacer()
             Text(value)
-                .font(.system(size: 13.5, weight: .bold))
+                .font(.system(size: bodySize, weight: .bold))
                 .foregroundStyle(.white)
                 .monospacedDigit()
         }
@@ -167,7 +202,7 @@ struct MainScreenView: View {
             step: 0.25
         ) {
             Text("Besoin : \(DurationCopy.delta(.hours(viewModel.sleepNeedHours)))")
-                .font(.system(size: 12.5, weight: .medium))
+                .font(.system(size: captionSize, weight: .medium))
                 .foregroundStyle(.white.opacity(0.74))
         }
         .tint(.white)
@@ -195,38 +230,83 @@ private struct PhoneFigureSection: View {
     let subtitle: String?
     let nightBars: [NightStripMapping.Bar]
 
+    @ScaledMetric private var captionSize: CGFloat = 13
+    @ScaledMetric private var tinySize: CGFloat = 10
+
     var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            figureAndGauge
+            if !nightBars.isEmpty {
+                nightStrip
+                    .padding(.top, 24)
+            }
+        }
+    }
+
+    private var figureAndGauge: some View {
         VStack(alignment: .leading, spacing: 0) {
             let numerals = debt.wholeHoursAndMinutes
             DebtFigure(hours: numerals.hours, minutes: numerals.minutes, tint: tint, size: .phone)
-            LiquidGauge(
-                fillFraction: GaugeMapping.fraction(for: debt),
-                ghostFraction: deltaSinceYesterday.map { GaugeMapping.fraction(for: debt - $0) },
-                targetFraction: GaugeMapping.targetFraction,
-                tint: tint,
-                height: .tall
-            )
+            gauge
                 .padding(.top, 18)
             deltaRow
                 .padding(.top, 12)
-            if !nightBars.isEmpty {
-                let bars = nightBars.map {
-                    NightStrip.Bar(
-                        isGap: $0.isGap, isAboveAxis: $0.isSurplus, fraction: $0.fraction
-                    )
-                }
-                NightStrip(bars: bars, height: 92)
-                    .padding(.top, 24)
-                HStack {
-                    Text("14 nuits")
-                    Spacer()
-                    Text("cette nuit")
-                }
-                .font(.system(size: 10))
-                .foregroundStyle(.white.opacity(0.5))
-                .padding(.top, 8)
-            }
         }
+        // VoiceOver (docs/IMPLEMENTATION_PLAN.md §5, P9): one stop for the
+        // figure, the gauge, and the delta context together — the plan's
+        // "value + yesterday's reference + direction" for the gauge is
+        // exactly what `deltaSinceYesterday` already carries, so this
+        // reuses the same values the visual chips read, rather than
+        // re-deriving anything gauge-specific.
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(figureAccessibilityLabel)
+    }
+
+    private var gauge: some View {
+        LiquidGauge(
+            fillFraction: GaugeMapping.fraction(for: debt),
+            ghostFraction: deltaSinceYesterday.map { GaugeMapping.fraction(for: debt - $0) },
+            targetFraction: GaugeMapping.targetFraction,
+            tint: tint,
+            height: .tall
+        )
+    }
+
+    /// Built from a handful of fixed, fully-formed sentence templates
+    /// (one per real call-site combination — see `stateBody`: the two
+    /// deltas are always passed together or not at all, alongside an
+    /// optional subtitle) rather than concatenated fragments, since a
+    /// string catalog translates whole sentences, not runtime-glued
+    /// pieces (word order varies by language). `subtitle` itself is
+    /// plain, already-French copy from the caller, not a further
+    /// localized fragment — a known, documented gap (P9 status note).
+    private var figureAccessibilityLabel: String {
+        let (hours, minutes) = debt.wholeHoursAndMinutes
+        if let deltaSinceYesterday, let deltaSinceMonday {
+            let seconds = abs(deltaSinceYesterday.seconds)
+            let yesterday = DurationCopy.delta(SleepDuration(seconds: seconds))
+            let monday = DurationCopy.delta(SleepDuration(seconds: abs(deltaSinceMonday.seconds)))
+            if deltaSinceYesterday.seconds >= 0 {
+                return String(
+                    localized: """
+                    Dette de sommeil : \(hours) heures \(minutes) minutes, en hausse \
+                    depuis hier, écart de \(yesterday). Écart de \(monday) depuis lundi.
+                    """
+                )
+            }
+            return String(
+                localized: """
+                Dette de sommeil : \(hours) heures \(minutes) minutes, en baisse \
+                depuis hier, écart de \(yesterday). Écart de \(monday) depuis lundi.
+                """
+            )
+        }
+        if let subtitle {
+            return String(
+                localized: "Dette de sommeil : \(hours) heures \(minutes) minutes. \(subtitle)"
+            )
+        }
+        return String(localized: "Dette de sommeil : \(hours) heures \(minutes) minutes.")
     }
 
     @ViewBuilder
@@ -242,20 +322,54 @@ private struct PhoneFigureSection: View {
             }
         } else if let subtitle {
             Text(subtitle)
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: captionSize, weight: .medium))
                 .foregroundStyle(.white.opacity(0.74))
         }
     }
 
-    private func deltaChip(_ delta: SleepDuration, caption: String) -> some View {
+    private func deltaChip(_ delta: SleepDuration, caption: LocalizedStringKey) -> some View {
         HStack(spacing: 4) {
             DeltaChip(
                 direction: delta.seconds >= 0 ? .up : .down,
                 text: DurationCopy.delta(SleepDuration(seconds: abs(delta.seconds)))
             )
             Text(caption)
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: captionSize, weight: .medium))
                 .foregroundStyle(.white.opacity(0.74))
         }
+    }
+
+    private var nightStrip: some View {
+        let bars = nightBars.map {
+            NightStrip.Bar(isGap: $0.isGap, isAboveAxis: $0.isSurplus, fraction: $0.fraction)
+        }
+        return VStack(alignment: .leading, spacing: 0) {
+            NightStrip(bars: bars, height: 92)
+            HStack {
+                Text("14 nuits")
+                Spacer()
+                Text("cette nuit")
+            }
+            .font(.system(size: tinySize))
+            .foregroundStyle(.white.opacity(0.5))
+            .padding(.top, 8)
+        }
+        // VoiceOver (P9): "the strip as a summarised series," not 14
+        // individually-focusable bars a screen reader user would have to
+        // swipe through one at a time to get anything out of.
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(nightStripAccessibilityLabel)
+    }
+
+    private var nightStripAccessibilityLabel: String {
+        let above = nightBars.filter { $0.isSurplus && !$0.isGap }.count
+        let below = nightBars.filter { !$0.isSurplus && !$0.isGap }.count
+        let gaps = nightBars.filter(\.isGap).count
+        return String(
+            localized: """
+            14 dernières nuits : \(above) au-dessus du besoin, \
+            \(below) en dessous, \(gaps) sans donnée.
+            """
+        )
     }
 }

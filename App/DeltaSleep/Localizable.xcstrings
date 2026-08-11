@@ -1,0 +1,190 @@
+{
+  "sourceLanguage": "fr",
+  "strings": {
+    "%lld nuits sur %lld": {
+      "comment": "Best-effort key for Text(\"\\(measured) nuits sur \\(required)\") — an Int interpolation extracts as %lld; unverified against real Xcode extraction (no local toolchain), so this may need reconciling once someone opens the project in Xcode (P9 status note).",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld nights out of %lld"
+          }
+        }
+      }
+    },
+    "14 NUITS": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "14 NIGHTS"
+          }
+        }
+      }
+    },
+    "14 nuits": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "14 nights"
+          }
+        }
+      }
+    },
+    "Autoriser l'accès au sommeil": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow sleep access"
+          }
+        }
+      }
+    },
+    "Besoin : %@": {
+      "comment": "Best-effort key for Text(\"Besoin : \\(DurationCopy.delta(...))\") — a String interpolation extracts as %@.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Need: %@"
+          }
+        }
+      }
+    },
+    "Besoin réglé": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configured need"
+          }
+        }
+      }
+    },
+    "Cette nuit": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tonight"
+          }
+        }
+      }
+    },
+    "Cette nuit non mesurée": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tonight not measured"
+          }
+        }
+      }
+    },
+    "DETTE DE SOMMEIL": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SLEEP DEBT"
+          }
+        }
+      }
+    },
+    "Lecture à partir de %lld": {
+      "comment": "Best-effort key for Text(\"Lecture à partir de \\(required)\") — see the %lld nuits sur %lld comment.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Readable from %lld"
+          }
+        }
+      }
+    },
+    "Moyenne sur 14 nuits": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "14-night average"
+          }
+        }
+      }
+    },
+    "Nuits sans donnée": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nights without data"
+          }
+        }
+      }
+    },
+    "Ouvrir les réglages": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Settings"
+          }
+        }
+      }
+    },
+    "Réglages → Santé → Accès aux données": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings → Health → Data access"
+          }
+        }
+      }
+    },
+    "cette nuit": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tonight"
+          }
+        }
+      }
+    },
+    "deltasleep lit tes nuits de sommeil dans Santé pour calculer ta dette de sommeil — un chiffre qui monte ou descend selon que tu dors plus ou moins que ton besoin. Rien ne quitte ton appareil.": {
+      "comment": "OnboardingView's first-run explainer",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "deltasleep reads your nights of sleep from Health to calculate your sleep debt — a number that rises or falls depending on whether you slept more or less than you need. Nothing leaves your device."
+          }
+        }
+      }
+    },
+    "depuis hier": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "since yesterday"
+          }
+        }
+      }
+    },
+    "depuis lundi": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "since Monday"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

@@ -29,6 +29,15 @@ struct DeltaSleepWidgetEntryView: View {
         .containerBackground(for: .widget) {
             Color.clear
         }
+        // Dynamic Type (docs/IMPLEMENTATION_PLAN.md §5, P9): GlassKit's
+        // shared text (`DebtFigure`, `StateMessage`) scales with the
+        // environment's type size, same as the phone screen — but a
+        // widget's frame is fixed by its family, not scrollable, so
+        // letting it grow all the way to the accessibility sizes would
+        // overflow the card rather than reflow it. Clamped to a band
+        // that still grows for readability without doing that; the
+        // phone screen (`MainScreenView`) carries no such clamp.
+        .dynamicTypeSize(.xSmall ... .xxxLarge)
     }
 
     @ViewBuilder
@@ -55,7 +64,7 @@ struct DeltaSleepWidgetEntryView: View {
                 family: family
             )
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Dette de sommeil : zéro.")
+            .accessibilityLabel(Text("Dette de sommeil : zéro."))
         case let .cached(computedAt):
             FigureCard(
                 debt: entry.snapshot?.debt ?? .zero,
@@ -66,7 +75,7 @@ struct DeltaSleepWidgetEntryView: View {
                 family: family
             )
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Donnée en cache, mesure ancienne.")
+            .accessibilityLabel(Text("Donnée en cache, mesure ancienne."))
         case .noData:
             StateMessage(
                 title: "Autoriser l'accès au sommeil",
@@ -76,7 +85,9 @@ struct DeltaSleepWidgetEntryView: View {
         case let .insufficientHistory(measured, required):
             InsufficientHistoryContent(measured: measured, required: required)
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("Historique insuffisant : \(measured) nuits sur \(required).")
+                .accessibilityLabel(
+                    String(localized: "Historique insuffisant : \(measured) nuits sur \(required).")
+                )
         case let .nightMissing(debt):
             FigureCard(
                 debt: debt,
@@ -87,14 +98,24 @@ struct DeltaSleepWidgetEntryView: View {
                 family: family
             )
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Nuit manquante, dette inchangée.")
+            .accessibilityLabel(Text("Nuit manquante, dette inchangée."))
         }
     }
 
+    /// FR + EN strings (docs/IMPLEMENTATION_PLAN.md §5, P9, D9): two fixed
+    /// sentence templates (one per `trend` case), each a single localized
+    /// literal — same reasoning as `MainScreenView`'s
+    /// `figureAccessibilityLabel` twin.
     private func nominalLabel(debt: SleepDuration, trend: Trend) -> String {
         let (hours, minutes) = debt.wholeHoursAndMinutes
-        let direction = trend == .rising ? "en hausse" : "en baisse"
-        return "Dette de sommeil : \(hours) heures \(minutes) minutes, \(direction)."
+        if trend == .rising {
+            return String(
+                localized: "Dette de sommeil : \(hours) heures \(minutes) minutes, en hausse."
+            )
+        }
+        return String(
+            localized: "Dette de sommeil : \(hours) heures \(minutes) minutes, en baisse."
+        )
     }
 
     /// "7 h 40", matching the mockup's own `.stale` card copy ("Mesure de

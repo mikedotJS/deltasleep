@@ -17,6 +17,11 @@ options:
   createIntermediateGroups: true
   usesTabs: false
   indentWidth: 4
+  # French is the source language (docs/IMPLEMENTATION_PLAN.md's D9,
+  # confirmed §1's "Language" row) — every target's `Localizable.xcstrings`
+  # is keyed on the French literals already in the Swift source, with
+  # English as the one translated locale for now (P9).
+  developmentLanguage: fr
 
 configs:
   Debug: debug

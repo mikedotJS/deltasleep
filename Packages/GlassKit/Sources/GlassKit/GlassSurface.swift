@@ -14,6 +14,9 @@ import SwiftUI
 /// pixel-matched port. A real device pass is still owed before release
 /// (see issue #1's status note).
 public struct GlassSurface: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+
     private let tint: GlassTint
     private let environment: GlassEnvironment
     private let cornerRadius: Double
@@ -27,13 +30,42 @@ public struct GlassSurface: View {
     public var body: some View {
         let palette = GlassTokens.palette(for: tint)
         ZStack {
-            baseGradient
-            bloom(palette: palette)
-            specular
-            GrainOverlay()
+            if reduceTransparency {
+                solidFallback(palette: palette)
+            } else {
+                baseGradient
+                bloom(palette: palette)
+                specular
+                GrainOverlay()
+            }
         }
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        .modifier(OuterChrome(environment: environment, cornerRadius: cornerRadius))
+        .modifier(
+            OuterChrome(
+                environment: environment,
+                cornerRadius: cornerRadius,
+                increaseContrast: contrast == .increased
+            )
+        )
+    }
+
+    /// Reduce Transparency (docs/IMPLEMENTATION_PLAN.md §5, P9): an opaque
+    /// near-black fill tinted by the same per-state palette the glass
+    /// recipe uses, instead of the translucent gradient/bloom/specular/
+    /// grain stack — no blur to fake, so degrading means "solid, legible,
+    /// still recognisably this state's colour," not "look like glass
+    /// anyway." Text painted on top (white at up to full opacity, per
+    /// `GlassTokens`) keeps its contrast ratio either way, since it was
+    /// never relying on the backdrop showing through.
+    private func solidFallback(palette: TintPalette) -> some View {
+        ZStack {
+            Color.black.opacity(0.86)
+            LinearGradient(
+                colors: [palette.bloom1.color.opacity(0.55), palette.bloom2.color.opacity(0.4)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
     }
 
     private var baseGradient: some View {
@@ -92,6 +124,11 @@ public struct GlassSurface: View {
 private struct OuterChrome: ViewModifier {
     let environment: GlassEnvironment
     let cornerRadius: Double
+    /// Increase Contrast (P9): thickens and brightens the app card's
+    /// edge so it reads as a distinct shape even against a similarly
+    /// dark backdrop — widgets skip this too, same as the normal edge,
+    /// since the system container already supplies theirs.
+    let increaseContrast: Bool
 
     func body(content: Content) -> some View {
         switch environment {
@@ -101,7 +138,7 @@ private struct OuterChrome: ViewModifier {
             content
                 .overlay(
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .strokeBorder(edgeHighlight, lineWidth: 1)
+                        .strokeBorder(edgeHighlight, lineWidth: increaseContrast ? 2 : 1)
                 )
                 .shadow(color: .black.opacity(0.42), radius: 22, x: 0, y: 22)
                 .shadow(color: .black.opacity(0.24), radius: 5, x: 0, y: 2)
@@ -109,11 +146,12 @@ private struct OuterChrome: ViewModifier {
     }
 
     private var edgeHighlight: LinearGradient {
-        LinearGradient(
+        let boost = increaseContrast ? 0.2 : 0.0
+        return LinearGradient(
             colors: [
-                RGBA(red: 1, green: 1, blue: 1, alpha: 0.62).color,
-                RGBA(red: 1, green: 1, blue: 1, alpha: 0.16).color,
-                RGBA(red: 1, green: 1, blue: 1, alpha: 0.22).color,
+                RGBA(red: 1, green: 1, blue: 1, alpha: 0.62 + boost).color,
+                RGBA(red: 1, green: 1, blue: 1, alpha: 0.16 + boost).color,
+                RGBA(red: 1, green: 1, blue: 1, alpha: 0.22 + boost).color,
             ],
             startPoint: .top,
             endPoint: .bottom

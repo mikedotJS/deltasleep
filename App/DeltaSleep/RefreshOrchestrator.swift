@@ -66,8 +66,8 @@ final class RefreshOrchestrator: @unchecked Sendable {
     /// right recovery action.
     func resolveAuthorizationState() async -> HealthAuthorizationState {
         let didRequestBefore = userDefaults.bool(forKey: Self.didRequestAuthorizationKey)
-        let requestStatus = (try? await source.requestStatus()) ?? .unknown
-        let hasAnySample = (try? await source.hasAnySampleEver()) ?? false
+        let requestStatus = await (try? source.requestStatus()) ?? .unknown
+        let hasAnySample = await (try? source.hasAnySampleEver()) ?? false
         return HealthAuthorizationState.resolve(
             didRequestBefore: didRequestBefore,
             requestStatus: requestStatus,

@@ -1,0 +1,150 @@
+{
+  "sourceLanguage": "fr",
+  "strings": {
+    "%lld nuits": {
+      "comment": "Best-effort key for Text(\"\\(measured) nuits\") — see App catalog's %lld nuits sur %lld comment.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld nights"
+          }
+        }
+      }
+    },
+    "14 nuits": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "14 nights"
+          }
+        }
+      }
+    },
+    "Autoriser l'accès au sommeil": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow sleep access"
+          }
+        }
+      }
+    },
+    "Cette nuit non mesurée": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tonight not measured"
+          }
+        }
+      }
+    },
+    "DETTE": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DEBT"
+          }
+        }
+      }
+    },
+    "Dette de sommeil": {
+      "comment": "Widget gallery description (DeltaSleepWidget.swift's .description(...))",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sleep debt"
+          }
+        }
+      }
+    },
+    "Dette de sommeil : zéro.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sleep debt: zero."
+          }
+        }
+      }
+    },
+    "Donnée en cache, mesure ancienne.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cached data, stale reading."
+          }
+        }
+      }
+    },
+    "Lecture à partir de %lld": {
+      "comment": "Best-effort key for Text(\"Lecture à partir de \\(required)\").",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Readable from %lld"
+          }
+        }
+      }
+    },
+    "Nuit manquante, dette inchangée.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Missing night, debt unchanged."
+          }
+        }
+      }
+    },
+    "Ouvrir l'app pour l'activer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open the app to enable it"
+          }
+        }
+      }
+    },
+    "cette nuit": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tonight"
+          }
+        }
+      }
+    },
+    "depuis hier": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "since yesterday"
+          }
+        }
+      }
+    },
+    "sur %lld": {
+      "comment": "Best-effort key for Text(\"sur \\(required)\").",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "out of %lld"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
