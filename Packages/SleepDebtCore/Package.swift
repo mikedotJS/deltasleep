@@ -5,10 +5,10 @@ let package = Package(
     name: "SleepDebtCore",
     platforms: [.iOS(.v17), .macOS(.v14)],
     products: [
-        .library(name: "SleepDebtCore", targets: ["SleepDebtCore"])
+        .library(name: "SleepDebtCore", targets: ["SleepDebtCore"]),
     ],
     targets: [
         .target(name: "SleepDebtCore"),
-        .testTarget(name: "SleepDebtCoreTests", dependencies: ["SleepDebtCore"])
+        .testTarget(name: "SleepDebtCoreTests", dependencies: ["SleepDebtCore"]),
     ]
 )

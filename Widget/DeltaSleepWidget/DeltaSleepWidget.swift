@@ -1,20 +1,20 @@
-import WidgetKit
 import SwiftUI
+import WidgetKit
 
 /// Placeholder timeline provider. The real provider (§5, P6) reads
 /// `DebtSnapshot` from the App Group container via SnapshotStore once
 /// P3 lands — this one just proves the extension builds and appears in
 /// the widget gallery.
 struct Provider: TimelineProvider {
-    func placeholder(in context: Context) -> SimpleEntry {
+    func placeholder(in _: Context) -> SimpleEntry {
         SimpleEntry(date: Date())
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> Void) {
+    func getSnapshot(in _: Context, completion: @escaping (SimpleEntry) -> Void) {
         completion(SimpleEntry(date: Date()))
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> Void) {
+    func getTimeline(in _: Context, completion: @escaping (Timeline<SimpleEntry>) -> Void) {
         completion(Timeline(entries: [SimpleEntry(date: Date())], policy: .never))
     }
 }

@@ -5,10 +5,10 @@ let package = Package(
     name: "GlassKit",
     platforms: [.iOS(.v17)],
     products: [
-        .library(name: "GlassKit", targets: ["GlassKit"])
+        .library(name: "GlassKit", targets: ["GlassKit"]),
     ],
     targets: [
         .target(name: "GlassKit"),
-        .testTarget(name: "GlassKitTests", dependencies: ["GlassKit"])
+        .testTarget(name: "GlassKitTests", dependencies: ["GlassKit"]),
     ]
 )
