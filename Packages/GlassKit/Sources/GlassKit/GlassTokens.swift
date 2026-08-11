@@ -31,7 +31,7 @@ public enum GlassTokens {
     public static func palette(for tint: GlassTint) -> TintPalette {
         switch tint {
         case .green:
-            return TintPalette(
+            TintPalette(
                 bloom1: RGBA(r255: 60, g255: 255, b255: 170, alpha: 0.42),
                 bloom2: RGBA(r255: 20, g255: 190, b255: 255, alpha: 0.26),
                 figureGradientEnd: RGBA(r255: 182, g255: 255, b255: 221),
@@ -40,7 +40,7 @@ public enum GlassTokens {
                 fillGlow: RGBA(r255: 15, g255: 191, b255: 122, alpha: 0.55)
             )
         case .red:
-            return TintPalette(
+            TintPalette(
                 bloom1: RGBA(r255: 255, g255: 60, b255: 90, alpha: 0.46),
                 bloom2: RGBA(r255: 255, g255: 140, b255: 60, alpha: 0.34),
                 figureGradientEnd: RGBA(r255: 255, g255: 201, b255: 176),
@@ -49,7 +49,7 @@ public enum GlassTokens {
                 fillGlow: RGBA(r255: 240, g255: 38, b255: 79, alpha: 0.6)
             )
         case .amber:
-            return TintPalette(
+            TintPalette(
                 bloom1: RGBA(r255: 255, g255: 190, b255: 70, alpha: 0.42),
                 bloom2: RGBA(r255: 255, g255: 110, b255: 60, alpha: 0.26),
                 figureGradientEnd: RGBA(r255: 255, g255: 230, b255: 168),
@@ -58,7 +58,7 @@ public enum GlassTokens {
                 fillGlow: RGBA(r255: 255, g255: 159, b255: 28, alpha: 0.55)
             )
         case .neutral:
-            return TintPalette(
+            TintPalette(
                 bloom1: RGBA(r255: 255, g255: 255, b255: 255, alpha: 0.16),
                 bloom2: RGBA(r255: 180, g255: 200, b255: 255, alpha: 0.14),
                 figureGradientEnd: RGBA(r255: 255, g255: 255, b255: 255, alpha: 0.72),

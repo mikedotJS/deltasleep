@@ -46,9 +46,10 @@ final class RefreshOrchestrator: @unchecked Sendable {
             userDefaults.set(true, forKey: Self.didRequestAuthorizationKey)
         }
         source.startObservingChanges { [weak self] completion in
+            let box = CompletionBox(completion)
             Task {
                 await self?.refreshNow()
-                completion()
+                box.call()
             }
         }
         await refreshNow()
@@ -69,5 +70,22 @@ final class RefreshOrchestrator: @unchecked Sendable {
             store: store,
             reloader: reloader
         )
+    }
+}
+
+/// A `Sendable` box around HealthKit's completion closure, whose own type
+/// isn't `@Sendable` in this SDK — see `HealthKitSleepSource
+/// .startObservingChanges`'s doc comment. `Task {}`'s operation closure
+/// must be `@Sendable`, so it can capture this box (a reference type we
+/// vouch for manually) but not the raw closure directly.
+private final class CompletionBox: @unchecked Sendable {
+    private let completion: () -> Void
+
+    init(_ completion: @escaping () -> Void) {
+        self.completion = completion
+    }
+
+    func call() {
+        completion()
     }
 }

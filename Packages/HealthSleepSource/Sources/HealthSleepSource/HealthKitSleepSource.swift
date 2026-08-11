@@ -10,6 +10,7 @@
 // `HealthAuthorizationState`) is tested instead.
 #if canImport(HealthKit)
 import Foundation
+
 // @preconcurrency: HKObserverQuery's completion handler
 // (HKObserverQueryCompletionHandler) isn't @Sendable-annotated in this
 // SDK, but startObservingChanges forwards it into a caller-supplied
@@ -53,8 +54,15 @@ public final class HealthKitSleepSource: SleepDataSource, @unchecked Sendable {
     /// it must call once its own refresh work is done — `HKObserverQuery`
     /// requires that acknowledgement to avoid the app being throttled for
     /// unresponsive background delivery.
+    ///
+    /// The completion closure's type isn't `@Sendable` (HealthKit doesn't
+    /// annotate `HKObserverQueryCompletionHandler` as one in this SDK),
+    /// so a caller that needs to call it after `await`ing async work
+    /// (crossing into a `Task {}`, which requires a `@Sendable` capture)
+    /// has to bridge it through something like an `@unchecked Sendable`
+    /// wrapper — see `RefreshOrchestrator`.
     public func startObservingChanges(
-        onUpdate: @escaping (@escaping @Sendable () -> Void) -> Void
+        onUpdate: @escaping (@escaping () -> Void) -> Void
     ) {
         let query = HKObserverQuery(sampleType: sleepType, predicate: nil) { _, completion, error in
             guard error == nil else {
