@@ -35,10 +35,10 @@ requirements.
 |---|---|
 | Debt window | Rolling 14 nights |
 | Colour semantics | Colour encodes the **derivative**, not the level. Green = debt fell vs yesterday, red = debt rose, amber = no delta computable (tonight unmeasured), neutral = no trustworthy reading at all |
-| Gauge scale | Linear, **0 → 20 h**, full width at 20 h (verified: 10 h 26 → 52 %, 13 h 04 → 65 %, 17 h 40 → 88 %) |
+| Gauge scale | Mockup renders linear 0 → 20 h (verified: 10 h 26 → 52 %, 13 h 04 → 65 %, 17 h 40 → 88 %). **Superseded** — see §1.1, gauge transfer function |
 | Gauge floor | Zero debt still shows a ~1.5 % stub, not an empty track |
-| Ghost marker | White tick = *yesterday's* debt on the same 0–20 h scale. The fill colour says which side of that tick you landed on |
-| Recency weighting | Last night carries **15 %** of the total weight (stated in the mockup copy) |
+| Ghost marker | White tick = *yesterday's* debt on the gauge scale. The fill colour says which side of that tick you landed on |
+| Recency weighting | Last night carries **15 %** of the total weight (stated in the mockup copy — and, it turns out, [RISE Science's](https://www.risescience.com/blog/how-much-sleep-debt-do-i-have) own published constant. See §1.1) |
 | 14-night strip | Raw encoding, not derivative: bar above axis = slept **more** than need, below = **less**. Last night gets a white dot. Missing nights = thin grey line on the axis |
 | Widget families | Small (176², one column) and medium (376×176, split: figure left / strip right) |
 | Main screen stats | Tonight, configured need, 14-night average, count of nights without data |
@@ -46,27 +46,111 @@ requirements.
 | States to support | 7 (see §5, Phase 6) |
 | Language | French is the source language |
 
-### The debt formula is a weighted sum, and the mockup's numbers prove it
+## 1.1 The debt engine — confirmed against RISE Science's published model
 
-The main screen shows: need 8 h 00, 14-night average 7 h 15, 1 night without data,
-debt **13 h 04**, last night 6 h 12.
+The mockup's numbers imply a weighted formula, not a plain sum: main screen shows need
+8 h 00, 14-night average 7 h 15, 1 night without data, debt **13 h 04**, last night
+6 h 12. A plain sum of deficits gives `13 nights × 45 min = 9 h 45` — not 13 h 04.
 
-A plain sum of deficits gives `13 nights × 45 min = 9 h 45` — not 13 h 04. So debt is
-**not** a raw sum. The stated "15 % for last night" pins the model down: geometric
-decay with ratio `r ≈ 0.87` gives the newest night exactly 15.2 % of total weight over
-14 nights (half-life ≈ 5 nights), and the debt is that weighted mean deficit scaled
-back to a 14-night magnitude:
+deltasleep's "dette de sommeil" is, deliberately or not, the same metric as
+[RISE Science's](https://www.risescience.com/blog/how-much-sleep-debt-do-i-have) sleep
+debt — same 14-night window, same "15 % on last night" framing quoted almost verbatim
+in both the mockup's `note` copy and RISE's own explainer
+([help centre](https://help.risescience.com/hc/en-us/articles/6047219133079-What-is-Sleep-Dept-And-how-to-track-it-with-RISE)).
+RISE's copy also confirms the sum framing is wrong: "rather than simply adding up total
+hours missed," recent nights are weighted more heavily. Treat RISE's public description
+as the spec, tightened by fitting it to the mockup's numbers, and confirm/adjust in
+Phase 1 against real data (see the backtest note under the gauge transfer function
+below).
+
+**Weights.** Geometric decay with ratio `r ≈ 0.873` puts last night at exactly 15.0 %
+of total weight over 14 nights (half-life ≈ 5.1 nights):
 
 ```
 w_i = r^i / Σ(r^k), k = 0..13        # i = 0 is last night
-debt = 14 × Σ( w_i × max(0, need − asleep_i) )
 ```
 
-Sanity check against the mockup: weighted mean deficit must be `13 h 04 / 14 = 56 min`.
-Last night (deficit 1 h 48) contributes `0.152 × 108 = 16.4 min`; the remaining 84.8 %
-of weight then needs to average 46.7 min, which sits right next to the stated 45 min
-overall average. **The mockup is internally consistent with `r = 0.87`.** Adopt it as
-the default and confirm in Phase 1.
+**Scaling.** RISE's own guidance — aim for "≤ 5 h" of debt, since zero is "often
+unachievable" — only makes sense if debt is a *magnitude*, not a bounded mean: a bare
+weighted-mean deficit tops out at `need` (~8 h), which would make "aim for ≤ 5 h" mean
+"sleep at least 3 h a night." Scaling the weighted mean back up by the window length
+fixes that, and reproduces the mockup's numbers:
+
+```
+debt = 14 × Σ( w_i × nightDeficit_i )
+```
+
+Sanity check: weighted mean deficit must be `13 h 04 / 14 = 56 min`. Last night
+(deficit 1 h 48) contributes `0.150 × 108 = 16.2 min`; the remaining 85 % of weight
+then needs to average 46.8 min — right next to the mockup's stated 45 min overall
+average, and `10 h 26 / 14 = 44.7 min/night` matches the green card's 45 min chip
+exactly. **`r = 0.873` and `×14` are internally consistent with every number the
+mockup shows.**
+
+**Per-night deficit and surplus credit (resolves D2).** RISE frames debt as something
+you "pay back" by sleeping in or napping — language that implies surplus nights count.
+But *uncapped* credit models sleep as a bank account (physiologically wrong — sleep is
+homeostatic, not bankable) and, combined with last night's 2.12× leverage on the
+headline (`14 × 0.150`), would let one long night move the figure by hours. Resolution:
+surplus reduces `nightDeficit_i` below zero, **capped at −1 h** (i.e. at most 1 h of
+credit per night), and the final debt is floored at zero. This lets catch-up sleep
+count — RISE's own advice — without letting a single night swing the headline by more
+than `14 × 0.150 × 1 h ≈ 2 h 07`. Validate the 1 h cap against the Phase 1 backtest
+below; if surplus nights are rare in real data the cap is inert and a hard clamp (no
+credit at all) is an equally safe fallback.
+
+**Weight renormalisation over present nights (extends D1).** Weights `w_i` must be
+renormalised over nights that actually have data, not silently treated as zero-deficit
+when computed against a fixed 14-slot window — otherwise turning off the Watch for a
+night *lowers* the debt, since a gap would act as a perfect night. This is what makes
+the `×14` scaling gap-invariant, which a plain sum is not.
+
+**Gap nights (extends D3/D8).** When last night specifically is a gap, carry
+yesterday's debt forward unchanged rather than recomputing over a shifted window — the
+mockup's own amber card shows fill and ghost at the identical 52 %, which is only true
+if the calculation didn't advance.
+
+**Trend, not raw delta (extends D1).** Define `Trend` as *last night's sleep vs. the
+weighted-average sleep implied by the current weights* (equivalently: debt falls
+whenever last night beat the weighted average), not as `debt_today − debt_yesterday`.
+The two usually agree, but a raw window-difference can flip colour on a bad night
+merely because a worse night 14 days ago rolled *out* of the window — an artifact the
+design cannot afford, since colour is the entire signal. As a byproduct this gives a
+free, more actionable number than the debt itself: tonight's break-even target. Cross-
+checks against the mockup: green card debt 10 h 26 → weighted mean deficit 44.7 min →
+break-even 7 h 15, which is exactly the "moyenne sur 14 nuits" already printed on the
+main screen; the phone card's 6 h 12 vs. a computed 7 h 04 break-even likewise explains
+its rising-red state.
+
+**Freeze trend on a sleep-need change (extends P7).** Changing "besoin réglé" from
+8 h 00 to 7 h 30 moves the headline by `14 × 30 min = 7 h` on a settings tap alone.
+Trend must come from sleep, not configuration: on a need change, recompute debt but
+mark that day's trend `unknown` until the next real night lands.
+
+## 1.2 Gauge transfer function (supersedes the mockup's linear 0–20 h reading)
+
+RISE's own target band (aim for ≤ 5 h, zero often unachievable) tells us where users
+actually live: `5 h` of debt is `21 min/night` average deficit, `10 h 26` (the mockup's
+own "nominal" card) is `45 min/night`. A linear 0–20 h scale spends its top half on
+territory rarely reached and compresses the entire meaningful range — including the
+mockup's own reference values — into its bottom third.
+
+Two-segment mapping: **0 → 8 h across the first 60 % of the track, 8 → 24 h across the
+remaining 40 %**, both segments linear. This keeps `10 h 26 → 65 %`, matching the
+mockup's own drawn position closely enough that the visual design doesn't need to be
+re-plotted, while giving real resolution to the 0–8 h band where the 5 h target and
+most improvement actually happen. Mark the `5 h` target on the track alongside the
+ghost tick — it's a more useful reference than yesterday's value alone, and it's the
+number RISE tells users to aim for.
+
+The stored `debt` value is **never** capped — only its gauge mapping saturates above
+24 h. Capping the stored value would flatten the derivative the whole design depends
+on: two different bad days both pegged at "24 h" would read as no change.
+
+The 8 h breakpoint is a starting point, not a commitment — validate and, if needed,
+retune it against Phase 1's fixture/backtest work (see the debt-formula backtest note
+above): plot the real debt distribution from Health data and put the breakpoint near
+the 75th–80th percentile rather than by inspection.
 
 ---
 
@@ -74,8 +158,8 @@ the default and confirm in Phase 1.
 
 | # | Decision | Proposed default | Needed by |
 |---|---|---|---|
-| D1 | Debt formula | Geometric weights, `r = 0.87`, ×14 scaling, per-night deficit clamped at 0 | Phase 1 |
-| D2 | Are surplus nights allowed to pay down debt? | No — clamp each night at 0 deficit; sleeping 10 h does not buy credit. (Alternative: allow negative, which changes the "Zéro" state's meaning) | Phase 1 |
+| D1 | Debt formula | **Resolved, pending backtest — see §1.1.** Geometric weights `r = 0.873`, weights renormalised over present nights, `×14` scaling, gap nights carry yesterday's debt forward, trend defined as last-night-vs-weighted-average (not raw window delta), trend frozen on a sleep-need change | Phase 1 |
+| D2 | Are surplus nights allowed to pay down debt? | **Resolved — see §1.1.** Yes, capped: surplus reduces a night's deficit below zero, capped at −1 h/night; total debt floored at 0. Balances RISE's own "pay it back" framing against the ~2 h swing an uncapped night would cause | Phase 1 |
 | D3 | Sleep-day boundary | Noon → noon: a sleep session is attributed to the day it *ended* | Phase 2 |
 | D4 | Minimum deployment target | iOS 26 (Liquid Glass APIs). Cuts reach; the alternative is iOS 18 + a hand-rolled glass fallback everywhere | Phase 0 |
 | D5 | Typography | Mockup uses Inter Tight / Inter. Ship the licensed fonts, or map to SF Pro Rounded / SF Pro with tightened tracking | Phase 4 |
@@ -83,6 +167,7 @@ the default and confirm in Phase 1.
 | D7 | "Since Monday" reference | Debt as of 00:00 local on the most recent Monday; hide the chip if the week has <2 measured nights | Phase 1 |
 | D8 | Insufficient-history rule | Refuse to show a figure below 14 measured nights, as the mockup does. Confirm the gap-vs-missing interaction (does 13 nights + 1 gap count as sufficient?) | Phase 1 |
 | D9 | Localisation scope | FR + EN at launch | Phase 9 |
+| D10 | Gauge transfer function | **Resolved, pending backtest — see §1.2.** Two-segment: 0–8 h across the first 60 % of the track, 8–24 h across the remaining 40 %; 5 h target marked on the track; stored debt never capped, only the gauge mapping saturates | Phase 1 (formula), Phase 5 (component) |
 
 ---
 
@@ -220,26 +305,36 @@ and no SwiftUI anywhere near it.
 - `Night` (date, time asleep, source, `isGap`), `SleepNeed`, `DebtSnapshot`
   (debt, yesterday's debt, delta since yesterday, delta since Monday, 14-night average,
   gap count, measured-night count, `computedAt`).
-- `Trend { falling, rising, flat, unknown }` — the thing that drives colour.
+- `Trend { falling, rising, flat, unknown }` — computed as last-night-vs-weighted-average,
+  not as a raw delta of two window totals (see §1.1) — the thing that drives colour.
 - `WidgetState` enum covering all 7 states, computed from a snapshot, so every surface
   derives its state the same way instead of each view re-deriving it.
-- The weighted-debt engine per **D1**, gap handling, the zero clamp (**D2**),
-  insufficient-history rule (**D8**), Monday reference (**D7**).
-- Gauge mapping: debt → 0…1 on the 0–20 h scale, with the 1.5 % floor.
+- The weighted-debt engine per **D1**: geometric weights (`r = 0.873`), renormalised
+  over present nights, `×14` scaling, per-night surplus credit capped at −1 h floored
+  at 0 total (**D2**), gap nights carry the prior debt forward unchanged, trend frozen
+  on a sleep-need change, insufficient-history rule (**D8**), Monday reference (**D7**).
+- **Backtest against real Health data** (own device history, or synthetic if unavailable
+  early): confirm/retune `r`, the 1 h surplus-credit cap, and — feeding P5 — the
+  gauge's 8 h breakpoint (**D10**) against the actual debt distribution, since all
+  three are fit to a handful of mockup numbers plus RISE's public description rather
+  than derived from first principles.
+- Gauge mapping: debt → 0…1 via the two-segment transfer function (**D10**), with the
+  1.5 % floor and the 5 h target mark.
 - Strip mapping: per-night surplus/deficit → normalised bar height, gap style.
 - Fixture set reproducing every mockup screenshot exactly, asserted to the minute.
 
 **Out of scope:** where nights come from; how anything looks.
 
 **Done when:** each of the mockup's seven states and both home-screen widgets can be
-reproduced from a fixture, and the main-screen numbers (13 h 04 / 6 h 12 / 8 h 00 /
-7 h 15 / 1 gap) are consistent under the chosen formula. Test coverage on the engine
-≥ 90 %.
+reproduced from a fixture, the main-screen numbers (13 h 04 / 6 h 12 / 8 h 00 /
+7 h 15 / 1 gap) are consistent under the chosen formula, and the backtest has either
+confirmed `r = 0.873` / the 1 h credit cap / the 8 h gauge breakpoint or produced
+retuned values with the data behind them. Test coverage on the engine ≥ 90 %.
 
 **Depends on:** P0. **Parallel with:** P2, P4, S1.
 
-**Risk:** if D1 is later overruled, everything downstream keeps working — this is
-exactly why the engine is isolated.
+**Risk:** if D1 or D10 are later overruled by the backtest, everything downstream keeps
+working — this is exactly why the engine is isolated.
 
 ---
 
@@ -343,7 +438,9 @@ early what "close enough" means.
 - `DebtFigure` — gradient-clipped numerals, `13` + small `h` + `04`, two sizes
   (47 pt widget / 64 pt phone), tabular alignment so the number does not jitter.
 - `LiquidGauge` — track, gradient fill with glow and inner highlight, ghost tick,
-  minimum-visible-fill floor, two heights.
+  minimum-visible-fill floor, a marked 5 h target, two heights. Value mapping uses the
+  two-segment transfer function from **D10**, not a linear scale — the component takes
+  raw debt and does its own 0–8 h / 8–24 h mapping so callers never see raw percentages.
 - `DeltaChip` — arrow glyph + duration in a pill; carries direction non-chromatically
   (this is what keeps the green/red semantics accessible).
 - `NightStrip` — 14 slots, centre axis, above/below bars, last-night dot, gap style,
@@ -486,7 +583,7 @@ or unspoken content.
 | Risk | Phase | Mitigation |
 |---|---|---|
 | A widget cannot reproduce true backdrop-blurred glass | S1, P4 | Spike before designing the API; accept a widget-specific recipe |
-| Debt formula is reverse-engineered, not specified | P1 | Confirm D1 early; the engine is isolated so a change is cheap |
+| Debt formula, surplus-credit cap, and gauge breakpoint are fit to mockup numbers + RISE's public description, not derived or independently confirmed | P1 | Backtest against real Health data in Phase 1 before P5/P6 consume the values; the engine is isolated so retuning is cheap |
 | HealthKit read denial is not observable | P2, P8 | Explicit heuristic, tested; honest copy rather than a false "no data" |
 | Background delivery latency makes the widget stale at wake-up | S2, P3 | Measure first; the "cached" state is the designed fallback |
 | Widget refresh budget exhausted | P3, P6 | Coalesce, skip no-op reloads, one scheduled refresh near the wake window |
