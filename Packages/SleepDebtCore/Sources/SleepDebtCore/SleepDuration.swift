@@ -32,8 +32,13 @@ public struct SleepDuration: Hashable, Comparable, Codable, Sendable {
 
     public static let zero = SleepDuration(seconds: 0)
 
-    public var hours: Double { seconds / 3600 }
-    public var minutes: Double { seconds / 60 }
+    public var hours: Double {
+        seconds / 3600
+    }
+
+    public var minutes: Double {
+        seconds / 60
+    }
 
     /// Whole hours and remaining minutes of this duration's *magnitude*,
     /// for display — e.g. `(13, 4)` for 13h04, and `(1, 24)` for either
@@ -74,8 +79,12 @@ public struct SleepDuration: Hashable, Comparable, Codable, Sendable {
     }
 
     public func clamped(low: SleepDuration, high: SleepDuration) -> SleepDuration {
-        if seconds < low.seconds { return low }
-        if seconds > high.seconds { return high }
+        if seconds < low.seconds {
+            return low
+        }
+        if seconds > high.seconds {
+            return high
+        }
         return self
     }
 }

@@ -27,7 +27,7 @@ final class SleepDebtEngineTests: XCTestCase {
     private func fourteenNights(
         endingOn date: Date, calendar: Calendar, asleep: SleepDuration
     ) -> [Night] {
-        (0..<14).map { offset in
+        (0 ..< 14).map { offset in
             let day = calendar.date(byAdding: .day, value: -offset, to: date)!
             return Night.measured(date: day, asleep: asleep)
         }
@@ -71,7 +71,7 @@ final class SleepDebtEngineTests: XCTestCase {
 
     func testWeightsAreMonotonicallyDecreasing() {
         let w = SleepDebtEngine.weights(count: 14)
-        for i in 0..<(w.count - 1) {
+        for i in 0 ..< (w.count - 1) {
             XCTAssertGreaterThan(w[i], w[i + 1])
         }
     }
@@ -153,7 +153,7 @@ final class SleepDebtEngineTests: XCTestCase {
         let need = SleepNeed(.hm(8, 0))
 
         func nights(badNightOffset: Int) throws -> [Night] {
-            try (0..<14).map { offset in
+            try (0 ..< 14).map { offset in
                 let day = try day(offset: offset, before: today, calendar: cal)
                 let asleep: SleepDuration = offset == badNightOffset ? .hm(4, 0) : .hm(8, 0)
                 return Night.measured(date: day, asleep: asleep)
@@ -186,7 +186,7 @@ final class SleepDebtEngineTests: XCTestCase {
         // fully covered. Today's last night (offset 0) is a gap; every
         // other night is a constant 6h30 (1h30 deficit).
         var nights: [Night] = []
-        for offset in 0..<15 {
+        for offset in 0 ..< 15 {
             let day = try day(offset: offset, before: today, calendar: cal)
             nights.append(offset == 0 ? .gap(date: day) : .measured(date: day, asleep: .hm(6, 30)))
         }
@@ -211,7 +211,7 @@ final class SleepDebtEngineTests: XCTestCase {
         // populated and non-gap, so it resolves normally, and both gap
         // nights should carry that value forward.
         var nights: [Night] = []
-        for offset in 0..<16 {
+        for offset in 0 ..< 16 {
             let day = try day(offset: offset, before: today, calendar: cal)
             nights.append(offset < 2 ? .gap(date: day) : .measured(date: day, asleep: .hm(6, 30)))
         }
@@ -238,8 +238,8 @@ final class SleepDebtEngineTests: XCTestCase {
     func testHistoryAvailabilityNoneWhenNoMeasuredNightsEver() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
-        let nights = try (0..<20).map { offset in
-            Night.gap(date: try day(offset: offset, before: today, calendar: cal))
+        let nights = try (0 ..< 20).map { offset in
+            try Night.gap(date: day(offset: offset, before: today, calendar: cal))
         }
         let availability = SleepDebtEngine.historyAvailability(
             endingOn: today, nights: nights, calendar: cal
@@ -250,9 +250,9 @@ final class SleepDebtEngineTests: XCTestCase {
     func testHistoryAvailabilityInsufficientWithPartialHistory() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
-        let nights = try (0..<6).map { offset in
-            Night.measured(
-                date: try day(offset: offset, before: today, calendar: cal), asleep: .hm(7, 0)
+        let nights = try (0 ..< 6).map { offset in
+            try Night.measured(
+                date: day(offset: offset, before: today, calendar: cal), asleep: .hm(7, 0)
             )
         }
         let availability = SleepDebtEngine.historyAvailability(
@@ -278,8 +278,8 @@ final class SleepDebtEngineTests: XCTestCase {
         // calendar days have elapsed.
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
-        let nights = try (0..<14).map { offset in
-            Night.gap(date: try day(offset: offset, before: today, calendar: cal))
+        let nights = try (0 ..< 14).map { offset in
+            try Night.gap(date: day(offset: offset, before: today, calendar: cal))
         }
         let availability = SleepDebtEngine.historyAvailability(
             endingOn: today, nights: nights, calendar: cal
@@ -356,9 +356,9 @@ final class SleepDebtEngineTests: XCTestCase {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
-        let nights = try (0..<15).map { offset in
-            Night.measured(
-                date: try day(offset: offset, before: today, calendar: cal), asleep: .hm(6, 30)
+        let nights = try (0 ..< 15).map { offset in
+            try Night.measured(
+                date: day(offset: offset, before: today, calendar: cal), asleep: .hm(6, 30)
             )
         }
         let result = try XCTUnwrap(
@@ -385,9 +385,9 @@ final class SleepDebtEngineTests: XCTestCase {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
-        let nights = try (0..<30).map { offset in
-            Night.measured(
-                date: try day(offset: offset, before: today, calendar: cal), asleep: .hm(6, 30)
+        let nights = try (0 ..< 30).map { offset in
+            try Night.measured(
+                date: day(offset: offset, before: today, calendar: cal), asleep: .hm(6, 30)
             )
         }
         let result = try XCTUnwrap(
@@ -410,9 +410,9 @@ final class SleepDebtEngineTests: XCTestCase {
             SleepDebtEngine.mostRecentMonday(onOrBefore: today, calendar: cal)
         )
 
-        var nights = try (0..<30).map { offset in
-            Night.measured(
-                date: try day(offset: offset, before: today, calendar: cal), asleep: .hm(6, 30)
+        var nights = try (0 ..< 30).map { offset in
+            try Night.measured(
+                date: day(offset: offset, before: today, calendar: cal), asleep: .hm(6, 30)
             )
         }
         // Turn every night from Monday through today into a gap, except
@@ -552,7 +552,7 @@ final class SleepDebtEngineTests: XCTestCase {
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
         var nights: [Night] = []
-        for offset in 0..<15 {
+        for offset in 0 ..< 15 {
             let day = try day(offset: offset, before: today, calendar: cal)
             nights.append(offset == 0 ? .gap(date: day) : .measured(date: day, asleep: .hm(6, 30)))
         }

@@ -39,12 +39,16 @@ public struct Night: Hashable, Sendable {
     }
 
     public var isGap: Bool {
-        if case .gap = kind { return true }
+        if case .gap = kind {
+            return true
+        }
         return false
     }
 
     public var asleep: SleepDuration? {
-        if case .measured(let duration) = kind { return duration }
+        if case let .measured(duration) = kind {
+            return duration
+        }
         return nil
     }
 }

@@ -9,7 +9,6 @@ import Foundation
 /// implementation detail, `internal` rather than `public` but reachable
 /// from tests via `@testable import`.
 public enum SleepDebtEngine {
-
     // MARK: - Weights
 
     /// Position-based weights for a window of `count` nights, index 0 =
@@ -18,7 +17,7 @@ public enum SleepDebtEngine {
     /// normalization.
     static func weights(count: Int, ratio: Double = DebtEngineConstants.weightRatio) -> [Double] {
         guard count > 0 else { return [] }
-        let raw = (0..<count).map { pow(ratio, Double($0)) }
+        let raw = (0 ..< count).map { pow(ratio, Double($0)) }
         let total = raw.reduce(0, +)
         guard total > 0 else { return Array(repeating: 1.0 / Double(count), count: count) }
         return raw.map { $0 / total }
@@ -50,7 +49,7 @@ public enum SleepDebtEngine {
     ) -> [Night]? {
         var result: [Night] = []
         result.reserveCapacity(DebtEngineConstants.windowSize)
-        for offset in 0..<DebtEngineConstants.windowSize {
+        for offset in 0 ..< DebtEngineConstants.windowSize {
             guard let day = calendar.date(byAdding: .day, value: -offset, to: date) else {
                 return nil
             }
