@@ -1,5 +1,5 @@
-@testable import HealthSleepSource
 import XCTest
+@testable import HealthSleepSource
 
 final class HealthAuthorizationStateTests: XCTestCase {
     func testNeverAskedAndHealthKitAgreesNeedsPrompt() {

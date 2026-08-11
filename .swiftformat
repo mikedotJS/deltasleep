@@ -3,6 +3,7 @@
 --maxwidth 100
 --self remove
 --importgrouping testable-bottom
+--ifdef no-indent
 --trimwhitespace always
 --semicolons never
 --commas always

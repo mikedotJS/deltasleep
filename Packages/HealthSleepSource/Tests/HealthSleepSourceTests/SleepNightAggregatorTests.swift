@@ -1,7 +1,7 @@
 import Foundation
-@testable import HealthSleepSource
 import SleepDebtCore
 import XCTest
+@testable import HealthSleepSource
 
 final class SleepNightAggregatorTests: XCTestCase {
     private func utcCalendar() -> Calendar {
@@ -164,7 +164,7 @@ final class SleepNightAggregatorTests: XCTestCase {
         XCTAssertTrue(nights[0].isGap)
     }
 
-    func testSamplesPresentButNoAsleepStageIsMeasuredZeroNotAGap() {
+    func testSamplesPresentButNoAsleepStageIsMeasuredZeroNotAGap() throws {
         // Only inBed/awake — HealthKit *has* data for this night, it's
         // just a night with no recorded sleep. A real, if extreme, value.
         let cal = utcCalendar()
@@ -176,19 +176,21 @@ final class SleepNightAggregatorTests: XCTestCase {
         ]
         let nights = SleepNightAggregator.nights(from: samples, forDays: [day], calendar: cal)
         XCTAssertFalse(nights[0].isGap)
-        XCTAssertEqual(nights[0].asleep?.seconds, 0, accuracy: 0.001)
+        let asleep = try XCTUnwrap(nights[0].asleep)
+        XCTAssertEqual(asleep.seconds, 0, accuracy: 0.001)
     }
 
-    func testSimpleSingleSourceNight() {
+    func testSimpleSingleSourceNight() throws {
         let cal = utcCalendar()
         let day = date(2026, 8, 11, 0, calendar: cal)
         let start = date(2026, 8, 10, 23, calendar: cal)
         let samples = [sample(.asleepCore, from: start, to: at(start, 8))]
         let nights = SleepNightAggregator.nights(from: samples, forDays: [day], calendar: cal)
-        XCTAssertEqual(nights[0].asleep?.seconds, h(8), accuracy: 0.001)
+        let asleep = try XCTUnwrap(nights[0].asleep)
+        XCTAssertEqual(asleep.seconds, h(8), accuracy: 0.001)
     }
 
-    func testExcludesInBedAndAwakeFromTheAsleepTotal() {
+    func testExcludesInBedAndAwakeFromTheAsleepTotal() throws {
         let cal = utcCalendar()
         let day = date(2026, 8, 11, 0, calendar: cal)
         let start = at(date(2026, 8, 10, 22, calendar: cal), 0.5) // 22:30
@@ -200,10 +202,11 @@ final class SleepNightAggregatorTests: XCTestCase {
         ]
         let nights = SleepNightAggregator.nights(from: samples, forDays: [day], calendar: cal)
         // 3h core + 3h45 REM = 6h45, excluding the 30min inBed and 15min awake.
-        XCTAssertEqual(nights[0].asleep?.seconds, h(6.75), accuracy: 0.001)
+        let asleep = try XCTUnwrap(nights[0].asleep)
+        XCTAssertEqual(asleep.seconds, h(6.75), accuracy: 0.001)
     }
 
-    func testCrossSourceOverlapDoesNotDoubleCount() {
+    func testCrossSourceOverlapDoesNotDoubleCount() throws {
         let cal = utcCalendar()
         let day = date(2026, 8, 11, 0, calendar: cal)
         let start = date(2026, 8, 10, 23, calendar: cal)
@@ -213,10 +216,11 @@ final class SleepNightAggregatorTests: XCTestCase {
             sample(.asleepCore, from: start, to: end, source: "com.thirdparty.sleeptracker"),
         ]
         let nights = SleepNightAggregator.nights(from: samples, forDays: [day], calendar: cal)
-        XCTAssertEqual(nights[0].asleep?.seconds, h(4), accuracy: 0.001)
+        let asleep = try XCTUnwrap(nights[0].asleep)
+        XCTAssertEqual(asleep.seconds, h(4), accuracy: 0.001)
     }
 
-    func testMultipleDaysEachGetTheirOwnNight() {
+    func testMultipleDaysEachGetTheirOwnNight() throws {
         let cal = utcCalendar()
         let day1 = date(2026, 8, 10, 0, calendar: cal)
         let day2 = date(2026, 8, 11, 0, calendar: cal)
@@ -230,7 +234,9 @@ final class SleepNightAggregatorTests: XCTestCase {
             from: samples, forDays: [day1, day2], calendar: cal
         )
         XCTAssertEqual(nights.count, 2)
-        XCTAssertEqual(nights[0].asleep?.seconds, h(7), accuracy: 0.001)
-        XCTAssertEqual(nights[1].asleep?.seconds, h(8), accuracy: 0.001)
+        let asleep0 = try XCTUnwrap(nights[0].asleep)
+        let asleep1 = try XCTUnwrap(nights[1].asleep)
+        XCTAssertEqual(asleep0.seconds, h(7), accuracy: 0.001)
+        XCTAssertEqual(asleep1.seconds, h(8), accuracy: 0.001)
     }
 }
