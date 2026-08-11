@@ -51,7 +51,9 @@ public enum SleepDebtEngine {
         var result: [Night] = []
         result.reserveCapacity(DebtEngineConstants.windowSize)
         for offset in 0..<DebtEngineConstants.windowSize {
-            guard let day = calendar.date(byAdding: .day, value: -offset, to: date) else { return nil }
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: date) else {
+                return nil
+            }
             guard let night = lookup[calendar.startOfDay(for: day)] else { return nil }
             result.append(night)
         }
@@ -78,9 +80,14 @@ public enum SleepDebtEngine {
         let totalMeasured = lookup.values.filter { !$0.isGap }.count
         guard totalMeasured > 0 else { return .none }
 
-        guard let win = window(endingOn: date, lookup: lookup, calendar: calendar),
-              win.contains(where: { !$0.isGap }) else {
-            return .insufficient(measuredNights: totalMeasured, requiredNights: DebtEngineConstants.minimumHistoryNights)
+        guard
+            let win = window(endingOn: date, lookup: lookup, calendar: calendar),
+            win.contains(where: { !$0.isGap })
+        else {
+            return .insufficient(
+                measuredNights: totalMeasured,
+                requiredNights: DebtEngineConstants.minimumHistoryNights
+            )
         }
         return .sufficient
     }
@@ -98,11 +105,15 @@ public enum SleepDebtEngine {
         need: SleepNeed,
         calendar: Calendar
     ) -> Double? {
-        guard let win = window(endingOn: date, lookup: lookup, calendar: calendar) else { return nil }
+        guard let win = window(endingOn: date, lookup: lookup, calendar: calendar) else {
+            return nil
+        }
         guard win.contains(where: { !$0.isGap }) else { return nil }
 
         if win[0].isGap {
-            guard let priorDate = calendar.date(byAdding: .day, value: -1, to: date) else { return nil }
+            guard let priorDate = calendar.date(byAdding: .day, value: -1, to: date) else {
+                return nil
+            }
             return debtSeconds(endingOn: priorDate, lookup: lookup, need: need, calendar: calendar)
         }
 
@@ -129,7 +140,7 @@ public enum SleepDebtEngine {
         let w = weights(count: window.count)
         var presentWeight = 0.0
         var weightedSleep = 0.0
-        for index in 1..<window.count {
+        for index in 1 ..< window.count {
             guard let asleep = window[index].asleep else { continue }
             presentWeight += w[index]
             weightedSleep += w[index] * asleep.seconds
@@ -159,8 +170,12 @@ public enum SleepDebtEngine {
         var cursor = calendar.startOfDay(for: start)
         let last = calendar.startOfDay(for: end)
         while cursor <= last {
-            if let night = lookup[cursor], !night.isGap { count += 1 }
-            guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
+            if let night = lookup[cursor], !night.isGap {
+                count += 1
+            }
+            guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else {
+                break
+            }
             cursor = next
         }
         return count
@@ -198,8 +213,12 @@ public enum SleepDebtEngine {
         }
         let today = calendar.startOfDay(for: referenceDate)
 
-        guard let todayDebtSeconds = debtSeconds(endingOn: today, lookup: lookup, need: need, calendar: calendar),
-              let todayWindow = window(endingOn: today, lookup: lookup, calendar: calendar) else {
+        guard
+            let todayDebtSeconds = debtSeconds(
+                endingOn: today, lookup: lookup, need: need, calendar: calendar
+            ),
+            let todayWindow = window(endingOn: today, lookup: lookup, calendar: calendar)
+        else {
             return nil
         }
 
@@ -228,16 +247,26 @@ public enum SleepDebtEngine {
         let averageSleepSeconds = measuredCount > 0 ? totalSleepSeconds / Double(measuredCount) : 0
 
         var deltaSinceYesterday: SleepDuration?
-        if let yesterday = calendar.date(byAdding: .day, value: -1, to: today),
-           let yesterdaySeconds = debtSeconds(endingOn: yesterday, lookup: lookup, need: need, calendar: calendar) {
+        if
+            let yesterday = calendar.date(byAdding: .day, value: -1, to: today),
+            let yesterdaySeconds = debtSeconds(
+                endingOn: yesterday, lookup: lookup, need: need, calendar: calendar
+            )
+        {
             deltaSinceYesterday = SleepDuration(seconds: todayDebtSeconds - yesterdaySeconds)
         }
 
         var deltaSinceMonday: SleepDuration?
         if let monday = mostRecentMonday(onOrBefore: today, calendar: calendar) {
-            let measuredSinceMonday = countMeasuredNights(from: monday, through: today, lookup: lookup, calendar: calendar)
-            if measuredSinceMonday >= 2,
-               let mondaySeconds = debtSeconds(endingOn: monday, lookup: lookup, need: need, calendar: calendar) {
+            let measuredSinceMonday = countMeasuredNights(
+                from: monday, through: today, lookup: lookup, calendar: calendar
+            )
+            if
+                measuredSinceMonday >= 2,
+                let mondaySeconds = debtSeconds(
+                    endingOn: monday, lookup: lookup, need: need, calendar: calendar
+                )
+            {
                 deltaSinceMonday = SleepDuration(seconds: todayDebtSeconds - mondaySeconds)
             }
         }

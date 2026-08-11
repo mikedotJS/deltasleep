@@ -3,15 +3,21 @@ import XCTest
 
 final class GaugeMappingTests: XCTestCase {
     func testZeroDebtSitsAtTheFloor() {
-        XCTAssertEqual(GaugeMapping.fraction(for: .zero), GaugeMapping.minimumVisibleFraction, accuracy: 0.0001)
+        XCTAssertEqual(
+            GaugeMapping.fraction(for: .zero), GaugeMapping.minimumVisibleFraction, accuracy: 0.0001
+        )
     }
 
     func testFirstSegmentCapIsExactlySixtyPercent() {
-        XCTAssertEqual(GaugeMapping.fraction(for: GaugeMapping.firstSegmentCap), 0.6, accuracy: 0.0001)
+        XCTAssertEqual(
+            GaugeMapping.fraction(for: GaugeMapping.firstSegmentCap), 0.6, accuracy: 0.0001
+        )
     }
 
     func testSaturationPointIsFull() {
-        XCTAssertEqual(GaugeMapping.fraction(for: GaugeMapping.saturationPoint), 1.0, accuracy: 0.0001)
+        XCTAssertEqual(
+            GaugeMapping.fraction(for: GaugeMapping.saturationPoint), 1.0, accuracy: 0.0001
+        )
     }
 
     func testBeyondSaturationStaysAtOne() {
@@ -29,13 +35,19 @@ final class GaugeMappingTests: XCTestCase {
     }
 
     func testTargetFractionMatchesFiveHours() {
-        XCTAssertEqual(GaugeMapping.targetFraction, GaugeMapping.fraction(for: .hours(5)), accuracy: 0.0001)
+        XCTAssertEqual(
+            GaugeMapping.targetFraction, GaugeMapping.fraction(for: .hours(5)), accuracy: 0.0001
+        )
     }
 
     func testNegativeDebtIsTreatedAsZero() {
         // The engine floors debt at 0 itself (D2), but the gauge shouldn't
         // misbehave if ever handed a negative value directly.
-        XCTAssertEqual(GaugeMapping.fraction(for: .hours(-3)), GaugeMapping.minimumVisibleFraction, accuracy: 0.0001)
+        XCTAssertEqual(
+            GaugeMapping.fraction(for: .hours(-3)),
+            GaugeMapping.minimumVisibleFraction,
+            accuracy: 0.0001
+        )
     }
 
     func testMockupReferenceValueLandsInTheExpectedRange() {

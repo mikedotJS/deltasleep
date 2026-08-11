@@ -10,7 +10,6 @@ import XCTest
 /// answer), rather than requiring precise by-hand arithmetic on the
 /// geometric weights that this file's author couldn't run to check.
 final class SleepDebtEngineTests: XCTestCase {
-
     // MARK: - Fixture helpers
 
     private func utcCalendar() -> Calendar {
@@ -25,11 +24,42 @@ final class SleepDebtEngineTests: XCTestCase {
 
     /// 14 consecutive nights ending on `date`, all with the same
     /// `asleep` duration.
-    private func fourteenNights(endingOn date: Date, calendar: Calendar, asleep: SleepDuration) -> [Night] {
+    private func fourteenNights(
+        endingOn date: Date, calendar: Calendar, asleep: SleepDuration
+    ) -> [Night] {
         (0..<14).map { offset in
             let day = calendar.date(byAdding: .day, value: -offset, to: date)!
             return Night.measured(date: day, asleep: asleep)
         }
+    }
+
+    /// `offset` calendar days before `date`. Lives outside any `test...`
+    /// method so its `XCTUnwrap` (rather than a bare `!`) reads plainly —
+    /// `Calendar.date(byAdding:...)` essentially can't fail for these
+    /// small, in-range offsets, but the project's SwiftFormat config bans
+    /// force-unwraps inside test methods regardless.
+    private func day(offset: Int, before date: Date, calendar: Calendar) throws -> Date {
+        try XCTUnwrap(calendar.date(byAdding: .day, value: -offset, to: date))
+    }
+
+    /// Thin wrapper over `SleepDebtEngine.snapshot` for tests where
+    /// `now == referenceDate`, which is nearly all of them — keeps call
+    /// sites short.
+    private func snapshot(
+        nights: [Night],
+        need: SleepNeed,
+        needChangedToday: Bool = false,
+        referenceDate: Date,
+        calendar: Calendar
+    ) -> DebtSnapshot? {
+        SleepDebtEngine.snapshot(
+            nights: nights,
+            need: need,
+            needChangedToday: needChangedToday,
+            referenceDate: referenceDate,
+            now: referenceDate,
+            calendar: calendar
+        )
     }
 
     // MARK: - Weights
@@ -89,20 +119,21 @@ final class SleepDebtEngineTests: XCTestCase {
 
     // MARK: - Debt formula: exact fixtures (constant sleep across the window)
 
-    func testConstantDeficitProducesExactDebt() {
+    func testConstantDeficitProducesExactDebt() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
-        let nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(6, 30)) // 1h30 deficit every night
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)
-        XCTAssertNotNil(snapshot)
+        let nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(6, 30))
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
         // A constant per-night deficit makes the weighted mean equal to
         // that same constant regardless of the specific weights, so
         // debt = 14 × 1h30 = 21h00 exactly.
-        XCTAssertEqual(snapshot!.debt.seconds, SleepDuration.hm(21, 0).seconds, accuracy: 1.0)
+        XCTAssertEqual(result.debt.seconds, SleepDuration.hm(21, 0).seconds, accuracy: 1.0)
     }
 
-    func testSurplusAtExactCapBoundaryFloorsDebtToZero() {
+    func testSurplusAtExactCapBoundaryFloorsDebtToZero() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
@@ -110,30 +141,33 @@ final class SleepDebtEngineTests: XCTestCase {
         // (so the cap doesn't even need to engage). Weighted mean = -1h
         // exactly; debt = 14 × -1h < 0, floored to 0 (D2).
         let nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(9, 0))
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)
-        XCTAssertNotNil(snapshot)
-        XCTAssertEqual(snapshot!.debt.seconds, 0, accuracy: 0.001)
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        XCTAssertEqual(result.debt.seconds, 0, accuracy: 0.001)
     }
 
-    func testMoreRecentNightsCarryMoreWeight() {
+    func testMoreRecentNightsCarryMoreWeight() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
 
-        func nights(badNightOffset: Int) -> [Night] {
-            (0..<14).map { offset in
-                let day = cal.date(byAdding: .day, value: -offset, to: today)!
+        func nights(badNightOffset: Int) throws -> [Night] {
+            try (0..<14).map { offset in
+                let day = try day(offset: offset, before: today, calendar: cal)
                 let asleep: SleepDuration = offset == badNightOffset ? .hm(4, 0) : .hm(8, 0)
                 return Night.measured(date: day, asleep: asleep)
             }
         }
 
-        let badNightRecent = SleepDebtEngine.snapshot(
-            nights: nights(badNightOffset: 0), need: need, referenceDate: today, now: today, calendar: cal
-        )!
-        let badNightOld = SleepDebtEngine.snapshot(
-            nights: nights(badNightOffset: 13), need: need, referenceDate: today, now: today, calendar: cal
-        )!
+        let recentNights = try nights(badNightOffset: 0)
+        let oldNights = try nights(badNightOffset: 13)
+        let badNightRecent = try XCTUnwrap(
+            snapshot(nights: recentNights, need: need, referenceDate: today, calendar: cal)
+        )
+        let badNightOld = try XCTUnwrap(
+            snapshot(nights: oldNights, need: need, referenceDate: today, calendar: cal)
+        )
 
         // Same single bad night, different position in the window — this
         // only needs weights to be strictly decreasing by index (true by
@@ -143,7 +177,7 @@ final class SleepDebtEngineTests: XCTestCase {
 
     // MARK: - Gap handling
 
-    func testGapNightCarriesYesterdaysDebtForwardExactly() {
+    func testGapNightCarriesYesterdaysDebtForwardExactly() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
@@ -153,20 +187,21 @@ final class SleepDebtEngineTests: XCTestCase {
         // other night is a constant 6h30 (1h30 deficit).
         var nights: [Night] = []
         for offset in 0..<15 {
-            let day = cal.date(byAdding: .day, value: -offset, to: today)!
+            let day = try day(offset: offset, before: today, calendar: cal)
             nights.append(offset == 0 ? .gap(date: day) : .measured(date: day, asleep: .hm(6, 30)))
         }
 
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)
-        XCTAssertNotNil(snapshot)
-        XCTAssertTrue(snapshot!.lastNightIsGap)
-        XCTAssertEqual(snapshot!.trend, .unknown)
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        XCTAssertTrue(result.lastNightIsGap)
+        XCTAssertEqual(result.trend, .unknown)
         // Yesterday's window is constant 6h30 throughout → 21h00 exactly;
         // today's gap should carry that forward unchanged.
-        XCTAssertEqual(snapshot!.debt.seconds, SleepDuration.hm(21, 0).seconds, accuracy: 1.0)
+        XCTAssertEqual(result.debt.seconds, SleepDuration.hm(21, 0).seconds, accuracy: 1.0)
     }
 
-    func testConsecutiveGapsRecurseToTheLastRealComputation() {
+    func testConsecutiveGapsRecurseToTheLastRealComputation() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
@@ -177,13 +212,14 @@ final class SleepDebtEngineTests: XCTestCase {
         // nights should carry that value forward.
         var nights: [Night] = []
         for offset in 0..<16 {
-            let day = cal.date(byAdding: .day, value: -offset, to: today)!
+            let day = try day(offset: offset, before: today, calendar: cal)
             nights.append(offset < 2 ? .gap(date: day) : .measured(date: day, asleep: .hm(6, 30)))
         }
 
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)
-        XCTAssertNotNil(snapshot)
-        XCTAssertEqual(snapshot!.debt.seconds, SleepDuration.hm(21, 0).seconds, accuracy: 1.0)
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        XCTAssertEqual(result.debt.seconds, SleepDuration.hm(21, 0).seconds, accuracy: 1.0)
     }
 
     func testGapEntirelyOutsideHistoryReturnsNil() {
@@ -193,86 +229,111 @@ final class SleepDebtEngineTests: XCTestCase {
         // Only a gap on the most recent night and nothing before it —
         // there's no earlier real computation to carry forward.
         let nights = [Night.gap(date: today)]
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)
-        XCTAssertNil(snapshot)
+        let result = snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        XCTAssertNil(result)
     }
 
     // MARK: - History availability (D8)
 
-    func testHistoryAvailabilityNoneWhenNoMeasuredNightsEver() {
+    func testHistoryAvailabilityNoneWhenNoMeasuredNightsEver() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
-        let nights = (0..<20).map { offset in Night.gap(date: cal.date(byAdding: .day, value: -offset, to: today)!) }
-        XCTAssertEqual(SleepDebtEngine.historyAvailability(endingOn: today, nights: nights, calendar: cal), .none)
+        let nights = try (0..<20).map { offset in
+            Night.gap(date: try day(offset: offset, before: today, calendar: cal))
+        }
+        let availability = SleepDebtEngine.historyAvailability(
+            endingOn: today, nights: nights, calendar: cal
+        )
+        XCTAssertEqual(availability, .none)
     }
 
-    func testHistoryAvailabilityInsufficientWithPartialHistory() {
+    func testHistoryAvailabilityInsufficientWithPartialHistory() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
-        let nights = (0..<6).map { offset in
-            Night.measured(date: cal.date(byAdding: .day, value: -offset, to: today)!, asleep: .hm(7, 0))
+        let nights = try (0..<6).map { offset in
+            Night.measured(
+                date: try day(offset: offset, before: today, calendar: cal), asleep: .hm(7, 0)
+            )
         }
-        XCTAssertEqual(
-            SleepDebtEngine.historyAvailability(endingOn: today, nights: nights, calendar: cal),
-            .insufficient(measuredNights: 6, requiredNights: 14)
+        let availability = SleepDebtEngine.historyAvailability(
+            endingOn: today, nights: nights, calendar: cal
         )
+        XCTAssertEqual(availability, .insufficient(measuredNights: 6, requiredNights: 14))
     }
 
     func testHistoryAvailabilitySufficientWithFullWindow() {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(7, 0))
-        XCTAssertEqual(SleepDebtEngine.historyAvailability(endingOn: today, nights: nights, calendar: cal), .sufficient)
+        let availability = SleepDebtEngine.historyAvailability(
+            endingOn: today, nights: nights, calendar: cal
+        )
+        XCTAssertEqual(availability, .sufficient)
     }
 
-    func testHistoryAvailabilityNoneWhenFullWindowIsAllGaps() {
+    func testHistoryAvailabilityNoneWhenFullWindowIsAllGaps() throws {
         // A full 14-day window exists, but literally none of it (nor
         // anything before it) was ever measured — this is the "no data"
         // condition, not "wait N more days," regardless of how many
         // calendar days have elapsed.
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
-        let nights = (0..<14).map { offset in Night.gap(date: cal.date(byAdding: .day, value: -offset, to: today)!) }
-        XCTAssertEqual(SleepDebtEngine.historyAvailability(endingOn: today, nights: nights, calendar: cal), .none)
+        let nights = try (0..<14).map { offset in
+            Night.gap(date: try day(offset: offset, before: today, calendar: cal))
+        }
+        let availability = SleepDebtEngine.historyAvailability(
+            endingOn: today, nights: nights, calendar: cal
+        )
+        XCTAssertEqual(availability, .none)
     }
 
     // MARK: - Trend
 
-    func testTrendFallingWhenLastNightBeatsWeightedAverage() {
+    func testTrendFallingWhenLastNightBeatsWeightedAverage() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
         var nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(6, 0))
         nights[0] = .measured(date: today, asleep: .hm(9, 0))
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)!
-        XCTAssertEqual(snapshot.trend, .falling)
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        XCTAssertEqual(result.trend, .falling)
     }
 
-    func testTrendRisingWhenLastNightWorseThanWeightedAverage() {
+    func testTrendRisingWhenLastNightWorseThanWeightedAverage() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
         var nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(6, 0))
         nights[0] = .measured(date: today, asleep: .hm(3, 0))
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)!
-        XCTAssertEqual(snapshot.trend, .rising)
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        XCTAssertEqual(result.trend, .rising)
     }
 
-    func testTrendFrozenOnNeedChange() {
+    func testTrendFrozenOnNeedChange() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
         var nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(6, 0))
         nights[0] = .measured(date: today, asleep: .hm(9, 0)) // would otherwise be .falling
-        let snapshot = SleepDebtEngine.snapshot(
-            nights: nights, need: need, needChangedToday: true, referenceDate: today, now: today, calendar: cal
-        )!
-        XCTAssertEqual(snapshot.trend, .unknown)
+        let result = try XCTUnwrap(
+            snapshot(
+                nights: nights,
+                need: need,
+                needChangedToday: true,
+                referenceDate: today,
+                calendar: cal
+            )
+        )
+        XCTAssertEqual(result.trend, .unknown)
     }
 
     // MARK: - Break-even target
 
-    func testBreakEvenTargetExcludesLastNight() {
+    func testBreakEvenTargetExcludesLastNight() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
@@ -281,184 +342,236 @@ final class SleepDebtEngineTests: XCTestCase {
         // 1...13 only, so it must come out to exactly 7h regardless.
         var nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(7, 0))
         nights[0] = .measured(date: today, asleep: .hm(2, 0))
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)!
-        XCTAssertEqual(snapshot.breakEvenTarget.seconds, SleepDuration.hm(7, 0).seconds, accuracy: 1.0)
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        XCTAssertEqual(
+            result.breakEvenTarget.seconds, SleepDuration.hm(7, 0).seconds, accuracy: 1.0
+        )
     }
 
     // MARK: - Deltas
 
-    func testDeltaSinceYesterdayIsZeroForAConstantPattern() {
+    func testDeltaSinceYesterdayIsZeroForAConstantPattern() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
-        let nights = (0..<15).map { offset in
-            Night.measured(date: cal.date(byAdding: .day, value: -offset, to: today)!, asleep: .hm(6, 30))
+        let nights = try (0..<15).map { offset in
+            Night.measured(
+                date: try day(offset: offset, before: today, calendar: cal), asleep: .hm(6, 30)
+            )
         }
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)!
-        XCTAssertNotNil(snapshot.deltaSinceYesterday)
-        XCTAssertEqual(snapshot.deltaSinceYesterday!.seconds, 0, accuracy: 1.0)
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        let delta = try XCTUnwrap(result.deltaSinceYesterday)
+        XCTAssertEqual(delta.seconds, 0, accuracy: 1.0)
     }
 
-    func testDeltaSinceYesterdayNilWhenYesterdaysWindowIsInsufficient() {
+    func testDeltaSinceYesterdayNilWhenYesterdaysWindowIsInsufficient() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
         // Exactly 14 nights — today's window is exactly satisfied, but
         // yesterday's would need one more day of history that isn't there.
         let nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(6, 30))
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)!
-        XCTAssertNil(snapshot.deltaSinceYesterday)
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        XCTAssertNil(result.deltaSinceYesterday)
     }
 
-    func testDeltaSinceMondayComputedWithEnoughHistory() {
+    func testDeltaSinceMondayComputedWithEnoughHistory() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
-        let nights = (0..<30).map { offset in
-            Night.measured(date: cal.date(byAdding: .day, value: -offset, to: today)!, asleep: .hm(6, 30))
+        let nights = try (0..<30).map { offset in
+            Night.measured(
+                date: try day(offset: offset, before: today, calendar: cal), asleep: .hm(6, 30)
+            )
         }
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)!
-        guard let delta = snapshot.deltaSinceMonday else {
-            return XCTFail("expected deltaSinceMonday to be computable with 30 days of constant history")
-        }
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        let delta = try XCTUnwrap(
+            result.deltaSinceMonday,
+            "expected deltaSinceMonday to be computable with 30 days of constant history"
+        )
         // Constant pattern throughout → debt is the same on every date in
         // range, so the delta is exactly 0.
         XCTAssertEqual(delta.seconds, 0, accuracy: 1.0)
     }
 
-    func testDeltaSinceMondayNilWhenFewerThanTwoMeasuredNightsSinceMonday() {
+    func testDeltaSinceMondayNilWhenFewerThanTwoMeasuredNightsSinceMonday() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
-        guard let monday = SleepDebtEngine.mostRecentMonday(onOrBefore: today, calendar: cal) else {
-            return XCTFail("expected a most-recent Monday")
-        }
+        let monday = try XCTUnwrap(
+            SleepDebtEngine.mostRecentMonday(onOrBefore: today, calendar: cal)
+        )
 
-        var nights = (0..<30).map { offset in
-            Night.measured(date: cal.date(byAdding: .day, value: -offset, to: today)!, asleep: .hm(6, 30))
+        var nights = try (0..<30).map { offset in
+            Night.measured(
+                date: try day(offset: offset, before: today, calendar: cal), asleep: .hm(6, 30)
+            )
         }
         // Turn every night from Monday through today into a gap, except
         // leave last night measured so today's own window still resolves.
         var cursor = monday
         let todayStart = cal.startOfDay(for: today)
         while cursor <= todayStart {
-            if !cal.isDate(cursor, inSameDayAs: today),
-               let index = nights.firstIndex(where: { cal.isDate($0.date, inSameDayAs: cursor) }) {
+            if
+                !cal.isDate(cursor, inSameDayAs: today),
+                let index = nights.firstIndex(where: { cal.isDate($0.date, inSameDayAs: cursor) })
+            {
                 nights[index] = .gap(date: cursor)
             }
             guard let next = cal.date(byAdding: .day, value: 1, to: cursor) else { break }
             cursor = next
         }
 
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)!
-        XCTAssertNil(snapshot.deltaSinceMonday)
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        XCTAssertNil(result.deltaSinceMonday)
     }
 
     // MARK: - Monday calculation itself
 
-    func testMostRecentMondayIsAMondayWithinTheLastWeek() {
+    func testMostRecentMondayIsAMondayWithinTheLastWeek() throws {
         let cal = utcCalendar()
         let reference = date(2026, 8, 11, calendar: cal)
-        guard let monday = SleepDebtEngine.mostRecentMonday(onOrBefore: reference, calendar: cal) else {
-            return XCTFail("expected a Monday")
-        }
+        let monday = try XCTUnwrap(
+            SleepDebtEngine.mostRecentMonday(onOrBefore: reference, calendar: cal)
+        )
         XCTAssertEqual(cal.component(.weekday, from: monday), 2) // Gregorian: Monday = 2
         XCTAssertLessThanOrEqual(monday, reference)
-        XCTAssertGreaterThan(monday, cal.date(byAdding: .day, value: -7, to: reference)!)
+        let aWeekBefore = try XCTUnwrap(cal.date(byAdding: .day, value: -7, to: reference))
+        XCTAssertGreaterThan(monday, aWeekBefore)
     }
 
-    func testMostRecentMondayOfAMondayIsItself() {
+    func testMostRecentMondayOfAMondayIsItself() throws {
         let cal = utcCalendar()
         let reference = date(2026, 8, 11, calendar: cal)
-        guard let monday = SleepDebtEngine.mostRecentMonday(onOrBefore: reference, calendar: cal),
-              let mondayOfMonday = SleepDebtEngine.mostRecentMonday(onOrBefore: monday, calendar: cal) else {
-            return XCTFail("expected both calls to resolve")
-        }
+        let monday = try XCTUnwrap(
+            SleepDebtEngine.mostRecentMonday(onOrBefore: reference, calendar: cal)
+        )
+        let mondayOfMonday = try XCTUnwrap(
+            SleepDebtEngine.mostRecentMonday(onOrBefore: monday, calendar: cal)
+        )
         XCTAssertEqual(cal.startOfDay(for: monday), cal.startOfDay(for: mondayOfMonday))
     }
 
     // MARK: - Averages and counts
 
-    func testFourteenNightAverageIsAverageSleepNotAverageDeficit() {
+    func testFourteenNightAverageIsAverageSleepNotAverageDeficit() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
         let nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(7, 15))
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)!
-        XCTAssertEqual(snapshot.fourteenNightAverage.seconds, SleepDuration.hm(7, 15).seconds, accuracy: 1.0)
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        XCTAssertEqual(
+            result.fourteenNightAverage.seconds, SleepDuration.hm(7, 15).seconds, accuracy: 1.0
+        )
     }
 
-    func testMeasuredAndGapCountsReflectTheWindow() {
+    func testMeasuredAndGapCountsReflectTheWindow() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
         var nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(7, 0))
         // Make one non-last night (offset 5) a gap.
-        let gapDay = cal.date(byAdding: .day, value: -5, to: today)!
+        let gapDay = try day(offset: 5, before: today, calendar: cal)
         nights[5] = .gap(date: gapDay)
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)!
-        XCTAssertEqual(snapshot.measuredNightCount, 13)
-        XCTAssertEqual(snapshot.gapCount, 1)
-        XCTAssertFalse(snapshot.lastNightIsGap)
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        XCTAssertEqual(result.measuredNightCount, 13)
+        XCTAssertEqual(result.gapCount, 1)
+        XCTAssertFalse(result.lastNightIsGap)
     }
 
     // MARK: - WidgetState classification
 
-    func testWidgetStateNominalForAnOrdinaryReading() {
+    func testWidgetStateNominalForAnOrdinaryReading() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
         var nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(6, 0))
         nights[0] = .measured(date: today, asleep: .hm(9, 0))
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)!
-        let state = WidgetState.classify(history: .sufficient, snapshot: snapshot, staleAfter: 6 * 3600, now: today)
-        guard case .nominal(_, let trend) = state else { return XCTFail("expected .nominal, got \(state)") }
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        let state = WidgetState.classify(
+            history: .sufficient, snapshot: result, staleAfter: 6 * 3600, now: today
+        )
+        guard case let .nominal(_, trend) = state else {
+            return XCTFail("expected .nominal, got \(state)")
+        }
         XCTAssertEqual(trend, .falling)
     }
 
-    func testWidgetStateZeroWhenDebtFloored() {
+    func testWidgetStateZeroWhenDebtFloored() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
-        let nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(9, 0)) // floors to 0, see above
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)!
-        let state = WidgetState.classify(history: .sufficient, snapshot: snapshot, staleAfter: 6 * 3600, now: today)
+        // 9h asleep vs 8h need floors debt to 0, as in the exact-fixture test above.
+        let nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(9, 0))
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        let state = WidgetState.classify(
+            history: .sufficient, snapshot: result, staleAfter: 6 * 3600, now: today
+        )
         XCTAssertEqual(state, .zero)
     }
 
-    func testWidgetStateCachedWhenStale() {
+    func testWidgetStateCachedWhenStale() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
         let nights = fourteenNights(endingOn: today, calendar: cal, asleep: .hm(6, 30))
         let staleAfter: TimeInterval = 6 * 3600
         let computedAt = today
-        let snapshot = SleepDebtEngine.snapshot(
-            nights: nights, need: need, referenceDate: today, now: computedAt, calendar: cal
-        )!
+        let result = try XCTUnwrap(
+            SleepDebtEngine.snapshot(
+                nights: nights, need: need, referenceDate: today, now: computedAt, calendar: cal
+            )
+        )
         let laterNow = computedAt.addingTimeInterval(staleAfter + 1)
-        let state = WidgetState.classify(history: .sufficient, snapshot: snapshot, staleAfter: staleAfter, now: laterNow)
+        let state = WidgetState.classify(
+            history: .sufficient, snapshot: result, staleAfter: staleAfter, now: laterNow
+        )
         XCTAssertEqual(state, .cached(computedAt: computedAt))
     }
 
-    func testWidgetStateNightMissing() {
+    func testWidgetStateNightMissing() throws {
         let cal = utcCalendar()
         let today = date(2026, 8, 11, calendar: cal)
         let need = SleepNeed(.hm(8, 0))
         var nights: [Night] = []
         for offset in 0..<15 {
-            let day = cal.date(byAdding: .day, value: -offset, to: today)!
+            let day = try day(offset: offset, before: today, calendar: cal)
             nights.append(offset == 0 ? .gap(date: day) : .measured(date: day, asleep: .hm(6, 30)))
         }
-        let snapshot = SleepDebtEngine.snapshot(nights: nights, need: need, referenceDate: today, now: today, calendar: cal)!
-        let state = WidgetState.classify(history: .sufficient, snapshot: snapshot, staleAfter: 6 * 3600, now: today)
-        guard case .nightMissing(let carriedDebt) = state else { return XCTFail("expected .nightMissing, got \(state)") }
-        XCTAssertEqual(carriedDebt.seconds, snapshot.debt.seconds, accuracy: 0.001)
+        let result = try XCTUnwrap(
+            snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
+        )
+        let state = WidgetState.classify(
+            history: .sufficient, snapshot: result, staleAfter: 6 * 3600, now: today
+        )
+        guard case let .nightMissing(carriedDebt) = state else {
+            return XCTFail("expected .nightMissing, got \(state)")
+        }
+        XCTAssertEqual(carriedDebt.seconds, result.debt.seconds, accuracy: 0.001)
     }
 
     func testWidgetStateNoDataAndInsufficientHistory() {
+        let epoch = Date(timeIntervalSince1970: 0)
         XCTAssertEqual(
-            WidgetState.classify(history: .none, snapshot: nil, staleAfter: 3600, now: Date(timeIntervalSince1970: 0)),
+            WidgetState.classify(history: .none, snapshot: nil, staleAfter: 3600, now: epoch),
             .noData
         )
         XCTAssertEqual(
@@ -466,7 +579,7 @@ final class SleepDebtEngineTests: XCTestCase {
                 history: .insufficient(measuredNights: 6, requiredNights: 14),
                 snapshot: nil,
                 staleAfter: 3600,
-                now: Date(timeIntervalSince1970: 0)
+                now: epoch
             ),
             .insufficientHistory(measuredNights: 6, requiredNights: 14)
         )

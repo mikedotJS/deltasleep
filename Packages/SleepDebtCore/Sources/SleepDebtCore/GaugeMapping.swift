@@ -34,7 +34,9 @@ public enum GaugeMapping {
 
         let raw: Double
         if seconds <= capSeconds {
-            raw = capSeconds > 0 ? (seconds / capSeconds) * firstSegmentFraction : firstSegmentFraction
+            raw = capSeconds > 0
+                ? (seconds / capSeconds) * firstSegmentFraction
+                : firstSegmentFraction
         } else {
             let secondSegmentSeconds = saturationSeconds - capSeconds
             let progress = secondSegmentSeconds > 0

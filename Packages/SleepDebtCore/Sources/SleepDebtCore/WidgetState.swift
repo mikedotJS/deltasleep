@@ -76,7 +76,7 @@ public enum WidgetState: Equatable, Sendable {
         switch history {
         case .none:
             return .noData
-        case .insufficient(let measured, let required):
+        case let .insufficient(measured, required):
             return .insufficientHistory(measuredNights: measured, requiredNights: required)
         case .sufficient:
             guard let snapshot else { return .noData }
