@@ -504,9 +504,8 @@ final class SleepDebtEngineTests: XCTestCase {
         let result = try XCTUnwrap(
             snapshot(nights: nights, need: need, referenceDate: today, calendar: cal)
         )
-        XCTAssertEqual(
-            result.lastNightSleepDuration?.seconds, SleepDuration.hm(6, 12).seconds, accuracy: 0.001
-        )
+        let lastNight = try XCTUnwrap(result.lastNightSleepDuration)
+        XCTAssertEqual(lastNight.seconds, SleepDuration.hm(6, 12).seconds, accuracy: 0.001)
     }
 
     func testLastNightSleepDurationIsNilWhenLastNightIsAGap() throws {

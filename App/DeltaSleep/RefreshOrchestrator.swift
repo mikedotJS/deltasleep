@@ -8,10 +8,6 @@ import SnapshotStore
 /// points into one `RefreshCoordinator.refresh` call each, so there's
 /// exactly one code path that fetches, computes, persists, and reloads
 /// widget timelines (docs/IMPLEMENTATION_PLAN.md §5, P3).
-///
-/// Requesting HealthKit authorization here is only the minimum needed
-/// for the app to function end to end before P8 builds the real
-/// first-run flow and copy — that's still a deliberate placeholder.
 final class RefreshOrchestrator: @unchecked Sendable {
     private static let didRequestAuthorizationKey = "didRequestHealthKitAuthorization"
 
@@ -38,14 +34,12 @@ final class RefreshOrchestrator: @unchecked Sendable {
         self.userDefaults = userDefaults
     }
 
-    /// Called once at app launch: requests HealthKit authorization the
-    /// first time only, starts the background observer, then runs an
-    /// initial foreground refresh.
+    /// Called once at app launch: starts the background observer, then
+    /// runs an initial foreground refresh. Deliberately does *not* request
+    /// HealthKit authorization — P8's onboarding flow does that
+    /// explicitly, after the user has seen why the app wants it, not
+    /// silently on first launch.
     func start() async {
-        if !userDefaults.bool(forKey: Self.didRequestAuthorizationKey) {
-            try? await source.requestAuthorization()
-            userDefaults.set(true, forKey: Self.didRequestAuthorizationKey)
-        }
         source.startObservingChanges { [weak self] completion in
             let box = CompletionBox(completion)
             Task {
@@ -54,6 +48,31 @@ final class RefreshOrchestrator: @unchecked Sendable {
             }
         }
         await refreshNow()
+    }
+
+    /// Requests HealthKit authorization the first time only — called
+    /// explicitly by `OnboardingViewModel` once the user taps through the
+    /// first-run explainer (P8).
+    func requestAuthorizationIfNeeded() async {
+        guard !userDefaults.bool(forKey: Self.didRequestAuthorizationKey) else { return }
+        try? await source.requestAuthorization()
+        userDefaults.set(true, forKey: Self.didRequestAuthorizationKey)
+    }
+
+    /// The full denial-ambiguity heuristic (P2's `HealthAuthorizationState`)
+    /// — combines the app's own "did we ask" flag with two live HealthKit
+    /// checks. Used by P8 to tell "never asked yet" apart from "asked, and
+    /// still nothing — probably denied" so the main screen can offer the
+    /// right recovery action.
+    func resolveAuthorizationState() async -> HealthAuthorizationState {
+        let didRequestBefore = userDefaults.bool(forKey: Self.didRequestAuthorizationKey)
+        let requestStatus = (try? await source.requestStatus()) ?? .unknown
+        let hasAnySample = (try? await source.hasAnySampleEver()) ?? false
+        return HealthAuthorizationState.resolve(
+            didRequestBefore: didRequestBefore,
+            requestStatus: requestStatus,
+            hasAnySampleEver: hasAnySample
+        )
     }
 
     /// Called on every scene activation, in addition to the background

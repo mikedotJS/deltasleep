@@ -8,6 +8,7 @@ struct DeltaSleepApp: App {
     private let orchestrator: RefreshOrchestrator
     private let store: SnapshotStoring
     private let needStore: SleepNeedStore
+    private let onboardingViewModel: OnboardingViewModel
 
     init() {
         // Falls back to a temp directory when the App Group entitlement
@@ -17,15 +18,20 @@ struct DeltaSleepApp: App {
         let directory = AppGroup.containerURL() ?? FileManager.default.temporaryDirectory
         let resolvedStore = FileSnapshotStore(directory: directory)
         let resolvedNeedStore = SleepNeedStore()
+        let resolvedOrchestrator = RefreshOrchestrator(
+            store: resolvedStore, needStore: resolvedNeedStore
+        )
         store = resolvedStore
         needStore = resolvedNeedStore
-        orchestrator = RefreshOrchestrator(store: resolvedStore, needStore: resolvedNeedStore)
+        orchestrator = resolvedOrchestrator
+        onboardingViewModel = OnboardingViewModel(orchestrator: resolvedOrchestrator)
     }
 
     var body: some Scene {
         WindowGroup {
-            MainScreenView(
-                viewModel: MainScreenViewModel(
+            RootView(
+                onboardingViewModel: onboardingViewModel,
+                mainScreenViewModel: MainScreenViewModel(
                     store: store, needStore: needStore, orchestrator: orchestrator
                 )
             )

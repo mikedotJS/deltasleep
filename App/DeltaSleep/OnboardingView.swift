@@ -1,0 +1,53 @@
+import GlassKit
+import SwiftUI
+
+/// The first-run explainer (docs/IMPLEMENTATION_PLAN.md §5, P8): what the
+/// app does and why it needs Health access, shown once, before the
+/// system permission prompt — not the app silently asking on launch.
+struct OnboardingView: View {
+    let viewModel: OnboardingViewModel
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 24) {
+                Spacer()
+                Text("deltasleep")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                Text(explainerText)
+                    .font(.system(size: 15))
+                    .foregroundStyle(.white.opacity(0.8))
+                Spacer()
+                Button {
+                    Task { await viewModel.requestAccess() }
+                } label: {
+                    HStack {
+                        Spacer()
+                        if viewModel.isRequesting {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Text("Autoriser l'accès au sommeil")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
+                        Spacer()
+                    }
+                    .padding(.vertical, 14)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(RGBA(r255: 15, g255: 191, b255: 122).color)
+                .disabled(viewModel.isRequesting)
+            }
+            .padding(32)
+        }
+    }
+
+    private var explainerText: String {
+        """
+        deltasleep lit tes nuits de sommeil dans Santé pour calculer ta dette de \
+        sommeil — un chiffre qui monte ou descend selon que tu dors plus ou moins \
+        que ton besoin. Rien ne quitte ton appareil.
+        """
+    }
+}

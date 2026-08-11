@@ -1,6 +1,7 @@
 import GlassKit
 import SleepDebtCore
 import SwiftUI
+import UIKit
 
 /// The mockup's `.phone` card (docs/IMPLEMENTATION_PLAN.md §5, P7) — the
 /// app's home screen. Reuses the same `WidgetState` classification and
@@ -36,7 +37,6 @@ struct MainScreenView: View {
         }
     }
 
-    @ViewBuilder
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
@@ -94,10 +94,15 @@ struct MainScreenView: View {
                 nightBars: viewModel.snapshot?.nightBars ?? []
             )
         case .noData:
-            StateMessage(
-                title: "Autoriser l'accès au sommeil",
-                subtitle: "Réglages → Santé → Accès aux données"
-            )
+            VStack(alignment: .leading, spacing: 12) {
+                StateMessage(
+                    title: "Autoriser l'accès au sommeil",
+                    subtitle: "Réglages → Santé → Accès aux données"
+                )
+                Button("Ouvrir les réglages", action: openSettings)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
         case let .insufficientHistory(measured, required):
             VStack(alignment: .leading, spacing: 8) {
                 Text("\(measured) nuits sur \(required)")
@@ -167,6 +172,15 @@ struct MainScreenView: View {
         }
         .tint(.white)
     }
+
+    /// Deep-links to this app's Settings page (Réglages → Santé is one tap
+    /// further, but iOS doesn't expose a direct link into another app's
+    /// Health-access sub-screen) — the recovery action for the `.noData`
+    /// state, when HealthKit access was denied or revoked after onboarding.
+    private func openSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
 }
 
 /// The figure + gauge + two delta chips + night strip block shared by
@@ -192,7 +206,7 @@ private struct PhoneFigureSection: View {
                 tint: tint,
                 height: .tall
             )
-            .padding(.top, 18)
+                .padding(.top, 18)
             deltaRow
                 .padding(.top, 12)
             if !nightBars.isEmpty {
@@ -202,7 +216,7 @@ private struct PhoneFigureSection: View {
                     )
                 }
                 NightStrip(bars: bars, height: 92)
-                .padding(.top, 24)
+                    .padding(.top, 24)
                 HStack {
                     Text("14 nuits")
                     Spacer()
