@@ -4,47 +4,61 @@ import SnapshotStore
 import SwiftUI
 import WidgetKit
 
-/// Placeholder rendering — the real seven-state UI (§5, P6) replaces
-/// `DeltaSleepWidgetEntryView` once P4 (GlassKit) and P5 (shared
-/// components) land. This provider does read the real cached snapshot
-/// from the App Group container via SnapshotStore (P3) already, so the
-/// app → cache → widget round trip is genuinely exercised end to end,
-/// not stubbed.
+/// Reads the App Group snapshot (P3) and classifies it into a
+/// `WidgetState` (P1) — the widget's own rendering (`WidgetContent.swift`,
+/// P6) never touches the raw `DebtSnapshot`/`HistoryAvailability` split
+/// itself, so every surface derives its state the same way.
 struct Provider: TimelineProvider {
     private let store: SnapshotStoring = FileSnapshotStore(
         directory: AppGroup.containerURL() ?? FileManager.default.temporaryDirectory
     )
 
-    func placeholder(in _: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), snapshot: nil)
+    func placeholder(in _: Context) -> SnapshotEntry {
+        SnapshotEntry(
+            date: Date(), state: .nominal(debt: .hm(10, 26), trend: .falling), snapshot: nil
+        )
     }
 
-    func getSnapshot(in _: Context, completion: @escaping (SimpleEntry) -> Void) {
-        completion(SimpleEntry(date: Date(), snapshot: store.readSnapshot()))
-    }
-
-    func getTimeline(in _: Context, completion: @escaping (Timeline<SimpleEntry>) -> Void) {
-        let entry = SimpleEntry(date: Date(), snapshot: store.readSnapshot())
-        completion(Timeline(entries: [entry], policy: .never))
-    }
-}
-
-struct SimpleEntry: TimelineEntry {
-    let date: Date
-    let snapshot: DebtSnapshot?
-}
-
-struct DeltaSleepWidgetEntryView: View {
-    var entry: Provider.Entry
-
-    var body: some View {
-        if let snapshot = entry.snapshot {
-            let (hours, minutes) = snapshot.debt.wholeHoursAndMinutes
-            Text("\(hours)h\(String(format: "%02d", minutes))")
+    func getSnapshot(in context: Context, completion: @escaping (SnapshotEntry) -> Void) {
+        if context.isPreview {
+            completion(placeholder(in: context))
         } else {
-            Text("deltasleep")
+            completion(makeEntry(now: Date()))
         }
     }
+
+    func getTimeline(in _: Context, completion: @escaping (Timeline<SnapshotEntry>) -> Void) {
+        let now = Date()
+        let entry = makeEntry(now: now)
+        // Refresh policy (P6 scope): re-check after D6's staleness
+        // window rather than never — this is what actually moves the
+        // widget into the "cached" state on its own if nothing else
+        // triggers a reload first (docs/IMPLEMENTATION_PLAN.md §5, P6).
+        let nextRefresh = now.addingTimeInterval(StalenessPolicy.staleAfter)
+        completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
+    }
+
+    private func makeEntry(now: Date) -> SnapshotEntry {
+        let snapshot = store.readSnapshot()
+        // A nil cached availability (nothing has ever run a refresh
+        // yet — a genuinely fresh install) reads the same as `.none`:
+        // there's no data, for the same reason there'd be no data after
+        // a real refresh found nothing.
+        let availability = store.readHistoryAvailability() ?? .none
+        let state = WidgetState.classify(
+            history: availability,
+            snapshot: snapshot,
+            staleAfter: StalenessPolicy.staleAfter,
+            now: now
+        )
+        return SnapshotEntry(date: now, state: state, snapshot: snapshot)
+    }
+}
+
+struct SnapshotEntry: TimelineEntry {
+    let date: Date
+    let state: WidgetState
+    let snapshot: DebtSnapshot?
 }
 
 struct DeltaSleepWidget: Widget {

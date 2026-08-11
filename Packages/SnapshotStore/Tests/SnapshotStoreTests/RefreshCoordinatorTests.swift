@@ -182,7 +182,7 @@ final class RefreshCoordinatorTests: XCTestCase {
         )
 
         XCTAssertEqual(outcome, .noData)
-        XCTAssertEqual(store.readHistoryAvailability(), .none)
+        XCTAssertEqual(store.readHistoryAvailability(), HistoryAvailability.none)
     }
 
     func testRefreshWithSufficientHistoryWritesSufficientAvailability() async throws {

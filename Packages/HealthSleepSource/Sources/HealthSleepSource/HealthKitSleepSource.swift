@@ -61,8 +61,12 @@ public final class HealthKitSleepSource: SleepDataSource, @unchecked Sendable {
     /// (crossing into a `Task {}`, which requires a `@Sendable` capture)
     /// has to bridge it through something like an `@unchecked Sendable`
     /// wrapper — see `RefreshOrchestrator`.
+    ///
+    /// `onUpdate` itself is `@Sendable` because `HKObserverQuery`'s own
+    /// update handler is — it's called from HealthKit's background
+    /// queue, not the queue `startObservingChanges` was called from.
     public func startObservingChanges(
-        onUpdate: @escaping (@escaping () -> Void) -> Void
+        onUpdate: @escaping @Sendable (@escaping () -> Void) -> Void
     ) {
         let query = HKObserverQuery(sampleType: sleepType, predicate: nil) { _, completion, error in
             guard error == nil else {

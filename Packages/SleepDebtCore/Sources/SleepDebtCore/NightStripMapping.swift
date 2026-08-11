@@ -24,6 +24,16 @@ public enum NightStripMapping {
         public let isSurplus: Bool
         /// 0...1 of the strip's half-height. Always 0 for a gap.
         public let fraction: Double
+
+        // The compiler's synthesized `init(from:)` (for Codable) counts
+        // as "this type declares an initializer," which suppresses the
+        // automatic memberwise init — so it has to be spelled out here
+        // now, not just implied by the stored properties above.
+        public init(isGap: Bool, isSurplus: Bool, fraction: Double) {
+            self.isGap = isGap
+            self.isSurplus = isSurplus
+            self.fraction = fraction
+        }
     }
 
     public static func bar(for night: Night, need: SleepNeed) -> Bar {
