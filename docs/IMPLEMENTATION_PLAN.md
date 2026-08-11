@@ -10,6 +10,20 @@ Home Screen widget, backed by Apple Health sleep data.
 
 **Status:** planning only. No implementation has started.
 
+**Tracking:** every phase below has an issue — [#1](https://github.com/mikedotJS/deltasleep/issues/1) S1,
+[#2](https://github.com/mikedotJS/deltasleep/issues/2) S2,
+[#3](https://github.com/mikedotJS/deltasleep/issues/3) P0,
+[#4](https://github.com/mikedotJS/deltasleep/issues/4) P1,
+[#5](https://github.com/mikedotJS/deltasleep/issues/5) P2,
+[#6](https://github.com/mikedotJS/deltasleep/issues/6) P3,
+[#7](https://github.com/mikedotJS/deltasleep/issues/7) P4,
+[#8](https://github.com/mikedotJS/deltasleep/issues/8) P5,
+[#9](https://github.com/mikedotJS/deltasleep/issues/9) P6,
+[#10](https://github.com/mikedotJS/deltasleep/issues/10) P7,
+[#11](https://github.com/mikedotJS/deltasleep/issues/11) P8,
+[#12](https://github.com/mikedotJS/deltasleep/issues/12) P9,
+[#13](https://github.com/mikedotJS/deltasleep/issues/13) P10.
+
 ---
 
 ## 1. What the mockup already decides
