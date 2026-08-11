@@ -43,9 +43,9 @@ struct OnboardingView: View {
         }
     }
 
-    // FR + EN strings (P9, D9): `LocalizedStringKey`, not `String` — a
-    // plain `String` here would always display in French, catalog or
-    // not (same reasoning as `StateMessage`'s fields).
+    /// FR + EN strings (P9, D9): `LocalizedStringKey`, not `String` — a
+    /// plain `String` here would always display in French, catalog or
+    /// not (same reasoning as `StateMessage`'s fields).
     private var explainerText: LocalizedStringKey {
         """
         deltasleep lit tes nuits de sommeil dans Santé pour calculer ta dette de \

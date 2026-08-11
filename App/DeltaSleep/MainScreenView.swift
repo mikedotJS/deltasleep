@@ -169,10 +169,10 @@ struct MainScreenView: View {
         }
     }
 
-    // `label` is `LocalizedStringKey` (every call site passes a literal),
-    // `value` stays plain `String` — it's already-formatted, genuinely
-    // dynamic copy (a duration or a count), not translatable source text
-    // (P9, D9; same reasoning as `StateMessage`'s fields).
+    /// `label` is `LocalizedStringKey` (every call site passes a literal),
+    /// `value` stays plain `String` — it's already-formatted, genuinely
+    /// dynamic copy (a duration or a count), not translatable source text
+    /// (P9, D9; same reasoning as `StateMessage`'s fields).
     private func statRow(_ label: LocalizedStringKey, value: String) -> some View {
         HStack {
             Text(label)
