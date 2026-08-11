@@ -161,7 +161,7 @@ the 75th–80th percentile rather than by inspection.
 | D1 | Debt formula | **Resolved, pending backtest — see §1.1.** Geometric weights `r = 0.873`, weights renormalised over present nights, `×14` scaling, gap nights carry yesterday's debt forward, trend defined as last-night-vs-weighted-average (not raw window delta), trend frozen on a sleep-need change | Phase 1 |
 | D2 | Are surplus nights allowed to pay down debt? | **Resolved — see §1.1.** Yes, capped: surplus reduces a night's deficit below zero, capped at −1 h/night; total debt floored at 0. Balances RISE's own "pay it back" framing against the ~2 h swing an uncapped night would cause | Phase 1 |
 | D3 | Sleep-day boundary | Noon → noon: a sleep session is attributed to the day it *ended* | Phase 2 |
-| D4 | Minimum deployment target | iOS 26 (Liquid Glass APIs). Cuts reach; the alternative is iOS 18 + a hand-rolled glass fallback everywhere | Phase 0 |
+| D4 | Minimum deployment target | **Resolved — iOS 26.** Ships against the real Liquid Glass APIs the design leans on rather than a hand-rolled fallback everywhere; narrows reach, accepted deliberately | Phase 0 |
 | D5 | Typography | Mockup uses Inter Tight / Inter. Ship the licensed fonts, or map to SF Pro Rounded / SF Pro with tightened tracking | Phase 4 |
 | D6 | Staleness threshold for the "cached" state | 6 h since `computedAt`, or "no new night since the expected wake window" | Phase 3 |
 | D7 | "Since Monday" reference | Debt as of 00:00 local on the most recent Monday; hide the chip if the week has <2 measured nights | Phase 1 |
@@ -284,7 +284,8 @@ to carry more weight.
 - The four local Swift packages from §3, empty but wired up with test targets.
 - `.gitignore`, SwiftFormat + SwiftLint config, `.editorconfig`.
 - GitHub Actions: build both targets, run all package tests, run the linter.
-- Resolve **D4** (deployment target).
+- Deployment target: **iOS 26** (**D4**, resolved) — set it in the project config from
+  the first commit; no fallback path to build for older iOS.
 
 **Out of scope:** anything visible.
 
