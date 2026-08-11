@@ -76,12 +76,17 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.mikedotjs.deltasleep.widget
         CODE_SIGN_ENTITLEMENTS: Widget/DeltaSleepWidget/DeltaSleepWidget.entitlements
-        GENERATE_INFOPLIST_FILE: true
-        INFOPLIST_KEY_CFBundleDisplayName: "deltasleep"
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
+    # NSExtension is a nested dict — INFOPLIST_KEY_* build settings only cover
+    # scalar keys, so this needs a real generated Info.plist, not
+    # GENERATE_INFOPLIST_FILE. `path` is required here (xcodegen 2.46 fails
+    # to parse `info:` without it, even though only `properties` is being
+    # supplied) — xcodegen writes the file at this path from `properties`.
     info:
+      path: Widget/DeltaSleepWidget/Info.plist
       properties:
+        CFBundleDisplayName: "deltasleep"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
 

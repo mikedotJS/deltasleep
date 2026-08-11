@@ -51,7 +51,9 @@ jobs:
         run: brew install swiftformat swiftlint
 
       - name: SwiftFormat (check only)
-        run: swiftformat --lint App Widget Packages
+        run: swiftformat App Widget Packages --lint
 
       - name: SwiftLint
-        run: swiftlint lint --strict App Widget Packages
+        # No path args here — swiftlint's `lint` doesn't take bare positional
+        # paths; scope comes from .swiftlint.yml's `included:` instead.
+        run: swiftlint lint --strict
