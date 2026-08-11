@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show available Xcode versions
+        run: ls /Applications | grep Xcode
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Test SleepDebtCore (pure Swift, no Apple frameworks)
+        run: swift test --package-path Packages/SleepDebtCore
+
+      - name: Test HealthSleepSource
+        run: swift test --package-path Packages/HealthSleepSource
+
+      - name: Test SnapshotStore
+        run: swift test --package-path Packages/SnapshotStore
+
+      - name: Test GlassKit
+        run: swift test --package-path Packages/GlassKit
+
+      - name: Build app + widget for iOS Simulator
+        run: |
+          xcodebuild build \
+            -project DeltaSleep.xcodeproj \
+            -scheme DeltaSleep \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO
+
+  lint:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SwiftFormat and SwiftLint
+        run: brew install swiftformat swiftlint
+
+      - name: SwiftFormat (check only)
+        run: swiftformat --lint App Widget Packages
+
+      - name: SwiftLint
+        run: swiftlint lint --strict App Widget Packages

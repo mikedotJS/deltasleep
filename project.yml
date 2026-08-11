@@ -1,0 +1,97 @@
+# XcodeGen project definition — https://github.com/yonaskolb/XcodeGen
+#
+# `DeltaSleep.xcodeproj` is generated from this file, not committed (see
+# .gitignore). Run `xcodegen generate` after cloning, or after editing this
+# file, before opening the project in Xcode.
+#
+# Bundle identifiers below (com.mikedotjs.*) are placeholders derived from
+# the GitHub handle — swap for the real Apple Developer Team's reverse-DNS
+# domain before provisioning or archiving.
+
+name: DeltaSleep
+
+options:
+  bundleIdPrefix: com.mikedotjs.deltasleep
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  usesTabs: false
+  indentWidth: 4
+
+configs:
+  Debug: debug
+  Release: release
+
+packages:
+  SleepDebtCore:
+    path: Packages/SleepDebtCore
+  HealthSleepSource:
+    path: Packages/HealthSleepSource
+  SnapshotStore:
+    path: Packages/SnapshotStore
+  GlassKit:
+    path: Packages/GlassKit
+
+targets:
+  DeltaSleep:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: App/DeltaSleep
+    dependencies:
+      - package: SleepDebtCore
+      - package: HealthSleepSource
+      - package: SnapshotStore
+      - package: GlassKit
+      - target: DeltaSleepWidgetExtension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mikedotjs.deltasleep
+        CODE_SIGN_ENTITLEMENTS: App/DeltaSleep/DeltaSleep.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        INFOPLIST_KEY_NSHealthShareUsageDescription: >-
+          deltasleep lit tes nuits de sommeil dans Santé pour calculer ta
+          dette de sommeil. Rien ne quitte ton appareil.
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+
+  DeltaSleepWidgetExtension:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Widget/DeltaSleepWidget
+    dependencies:
+      - package: SleepDebtCore
+      - package: SnapshotStore
+      - package: GlassKit
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mikedotjs.deltasleep.widget
+        CODE_SIGN_ENTITLEMENTS: Widget/DeltaSleepWidget/DeltaSleepWidget.entitlements
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_CFBundleDisplayName: "deltasleep"
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+    info:
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+schemes:
+  DeltaSleep:
+    build:
+      targets:
+        DeltaSleep: all
+        DeltaSleepWidgetExtension: all
+    run:
+      config: Debug
+    archive:
+      config: Release
