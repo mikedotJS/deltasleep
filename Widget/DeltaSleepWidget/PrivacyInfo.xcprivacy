@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  App Store privacy manifest (docs/IMPLEMENTATION_PLAN.md §5, P10) — the
+  widget extension's own bundle. Reads the App Group's cached snapshot
+  (P3's FileSnapshotStore, plain file I/O) and touches no "required
+  reason" API category (no UserDefaults, no file timestamps beyond what
+  the system itself manages) and transmits nothing anywhere. See the app
+  target's twin of this file for the HealthKit/UserDefaults reasoning
+  that doesn't apply here.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array/>
+</dict>
+</plist>

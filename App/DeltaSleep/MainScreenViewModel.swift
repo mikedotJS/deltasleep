@@ -59,4 +59,19 @@ final class MainScreenViewModel {
         )
         snapshot = cachedSnapshot
     }
+
+    #if DEBUG
+    /// P10's debug state switcher (docs/IMPLEMENTATION_PLAN.md §5, P10):
+    /// forces `fixture`'s data into the shared store, reloads widget
+    /// timelines, then re-reads from cache the same way `refresh()`
+    /// does — so the result renders through the exact same code path a
+    /// real refresh would. `store` and `reloadFromCache` are `private`,
+    /// not `fileprivate` — reachable from this extension only because
+    /// it lives in the same file, kept here rather than in
+    /// `DebugStateFixture.swift` for exactly that reason.
+    func applyDebugFixture(_ fixture: DebugStateFixture) {
+        try? fixture.apply(store: store, reloader: WidgetCenterReloader())
+        reloadFromCache(now: Date())
+    }
+    #endif
 }

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  App Store privacy manifest (docs/IMPLEMENTATION_PLAN.md §5, P10).
+  deltasleep reads Health's sleep data on-device to compute a debt figure
+  and writes nothing anywhere else — no network requests, no analytics,
+  no third-party SDKs. HealthKit access itself isn't one of Apple's
+  "required reason" API categories, so the one declared entry here is
+  UserDefaults (SleepNeedStore's configured sleep-need value, and two
+  onboarding/authorization flags — all read and written only by this
+  app, never shared).
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

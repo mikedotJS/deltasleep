@@ -59,8 +59,34 @@ struct MainScreenView: View {
             }
             needStepper
                 .padding(.top, 20)
+            #if DEBUG
+            debugStateMenu
+                .padding(.top, 20)
+            #endif
         }
     }
+
+    #if DEBUG
+    /// P10's debug state switcher (docs/IMPLEMENTATION_PLAN.md §5, P10) —
+    /// forces any of the seven states through the real store + widget
+    /// reload path (`DebugStateFixture`), so both this screen and the
+    /// widget can be checked against every state without waiting on real
+    /// HealthKit data. `#if DEBUG`-gated end to end; compiled out of
+    /// release builds entirely.
+    private var debugStateMenu: some View {
+        Menu {
+            ForEach(DebugStateFixture.allCases) { fixture in
+                Button(fixture.rawValue) {
+                    viewModel.applyDebugFixture(fixture)
+                }
+            }
+        } label: {
+            Text("État de débogage")
+                .font(.system(size: smallSize, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.6))
+        }
+    }
+    #endif
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
