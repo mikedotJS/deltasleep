@@ -33,8 +33,7 @@ public final class HealthKitSleepSource: SleepDataSource, @unchecked Sendable {
     /// HealthKit deliberately never reveals for read-only types. See
     /// `HealthAuthorizationState`.
     public func requestStatus() async throws -> HealthAuthorizationState.RequestStatus {
-        let status: HKAuthorizationRequestStatus = try await withCheckedThrowingContinuation {
-            continuation in
+        let status = try await withCheckedThrowingContinuation { continuation in
             healthStore.getRequestStatusForAuthorization(
                 toShare: [], read: [sleepType]
             ) { status, error in
