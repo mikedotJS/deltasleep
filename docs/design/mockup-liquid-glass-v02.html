@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dette de sommeil — Liquid Glass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --green-1:#5BF2A6; --green-2:#0FBF7A; --green-deep:#04593C;
+  --red-1:#FF7A6B;   --red-2:#F0264F;   --red-deep:#5C0620;
+  --amber-1:#FFD36B; --amber-2:#FF9F1C;
+  --txt:#FFFFFF;
+  --txt-dim:rgba(255,255,255,.62);
+  --txt-faint:rgba(255,255,255,.4);
+  --r:34px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  min-height:100vh;
+  background:#0B0A18;
+  color:var(--txt);
+  font-family:"Inter",system-ui,sans-serif;
+  padding:52px 24px 110px;
+  position:relative;
+  line-height:1.5;
+}
+
+/* ---------- wallpaper (donne de la matière au verre) ---------- */
+.bg{position:fixed;inset:0;z-index:-2;overflow:hidden;background:#0B0A18}
+.blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.85}
+.b1{width:60vw;height:60vw;left:-12vw;top:-14vw;background:#6C2BD9}
+.b2{width:52vw;height:52vw;right:-10vw;top:6vh;background:#0E7C86}
+.b3{width:48vw;height:48vw;left:14vw;bottom:-16vw;background:#D6206E}
+.b4{width:36vw;height:36vw;right:8vw;bottom:4vh;background:#F0A020;opacity:.5}
+.bg-grain{
+  position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;
+  mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.wrap{max-width:1000px;margin:0 auto;position:relative}
+.eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--txt-faint);font-weight:600}
+h1{
+  font-family:"Inter Tight",sans-serif;font-weight:700;
+  font-size:clamp(30px,5vw,48px);line-height:1.05;letter-spacing:-.035em;
+  margin:14px 0 16px;max-width:16ch;
+}
+.lede{max-width:58ch;color:var(--txt-dim);font-size:15px}
+.rule{height:1px;background:rgba(255,255,255,.12);margin:54px 0 28px}
+.sect{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--txt-faint);font-weight:600;margin-bottom:22px}
+.note{font-size:13.5px;color:var(--txt-dim);max-width:62ch;margin-top:20px}
+.note b{color:#fff;font-weight:600}
+
+/* ---------- verre ---------- */
+.w{
+  position:relative;overflow:hidden;border-radius:var(--r);
+  padding:18px;display:flex;flex-direction:column;
+  background:linear-gradient(150deg,rgba(255,255,255,.26),rgba(255,255,255,.07) 46%,rgba(255,255,255,.13));
+  -webkit-backdrop-filter:blur(26px) saturate(190%);
+  backdrop-filter:blur(26px) saturate(190%);
+  box-shadow:
+    0 22px 44px rgba(0,0,0,.42),
+    0 2px 10px rgba(0,0,0,.24),
+    inset 0 1px 0 rgba(255,255,255,.62),
+    inset 0 -1px 0 rgba(255,255,255,.22),
+    inset 1px 0 0 rgba(255,255,255,.16),
+    inset -1px 0 0 rgba(255,255,255,.16);
+}
+/* bloom sémantique — le verre est teinté, pas peint */
+.w::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 96% at 16% 4%, var(--tint-1) 0%, transparent 62%),
+             radial-gradient(130% 110% at 92% 104%, var(--tint-2) 0%, transparent 58%);
+  opacity:.9;
+}
+/* spéculaire */
+.w::after{
+  content:"";position:absolute;left:-30%;top:-70%;width:170%;height:110%;
+  pointer-events:none;transform:rotate(-14deg);
+  background:linear-gradient(180deg,rgba(255,255,255,.30),rgba(255,255,255,.05) 42%,transparent 70%);
+  border-radius:50%;
+}
+.w > *{position:relative;z-index:2}
+.grain{
+  position:absolute;inset:0;z-index:3;pointer-events:none;opacity:.34;
+  mix-blend-mode:soft-light;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+.g-red   { --tint-1:rgba(255,60,90,.46); --tint-2:rgba(255,140,60,.34) }
+.g-green { --tint-1:rgba(60,255,170,.42); --tint-2:rgba(20,190,255,.26) }
+.g-amber { --tint-1:rgba(255,190,70,.42); --tint-2:rgba(255,110,60,.26) }
+.g-neut  { --tint-1:rgba(255,255,255,.16); --tint-2:rgba(180,200,255,.14) }
+
+.w-s{width:176px;height:176px}
+.w-m{width:376px;height:176px}
+
+/* ---------- contenu ---------- */
+.w-label{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.72);font-weight:600}
+.fig{
+  font-family:"Inter Tight",sans-serif;font-weight:700;
+  font-size:47px;line-height:1;letter-spacing:-.045em;
+  margin-top:auto;display:flex;align-items:baseline;gap:1px;
+  background:linear-gradient(168deg,#fff 0%,#fff 42%,var(--fig-2,rgba(255,255,255,.72)) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 10px rgba(0,0,0,.28));
+}
+.fig .u{font-size:20px;font-weight:500;letter-spacing:-.01em;margin:0 2px;opacity:.66}
+.g-red .fig  { --fig-2:#FFC9B0 }
+.g-green .fig{ --fig-2:#B6FFDD }
+.g-amber .fig{ --fig-2:#FFE6A8 }
+
+/* jauge liquide */
+.track{
+  margin-top:14px;height:9px;border-radius:99px;position:relative;overflow:visible;
+  background:rgba(0,0,0,.26);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.4), inset 0 -1px 0 rgba(255,255,255,.16);
+}
+.fill{
+  position:absolute;left:0;top:0;bottom:0;border-radius:99px;
+  background:linear-gradient(90deg,var(--f1),var(--f2));
+  box-shadow:0 0 14px var(--f-glow), inset 0 1px 0 rgba(255,255,255,.5);
+}
+.fill::after{
+  content:"";position:absolute;left:3px;right:3px;top:1.5px;height:2.5px;border-radius:99px;
+  background:linear-gradient(90deg,rgba(255,255,255,.62),rgba(255,255,255,.12));
+}
+.g-red   .fill{ --f1:#FF9A6B; --f2:#F0264F; --f-glow:rgba(240,38,79,.6) }
+.g-green .fill{ --f1:#8CF7C0; --f2:#0FBF7A; --f-glow:rgba(15,191,122,.55) }
+.g-amber .fill{ --f1:#FFE08A; --f2:#FF9F1C; --f-glow:rgba(255,159,28,.55) }
+.g-neut  .fill{ --f1:rgba(255,255,255,.6); --f2:rgba(255,255,255,.34); --f-glow:transparent }
+.ghost{
+  position:absolute;top:-4px;width:2px;height:17px;border-radius:2px;
+  background:rgba(255,255,255,.82);box-shadow:0 0 8px rgba(255,255,255,.5);
+  transform:translateX(-1px);
+}
+.delta{margin-top:9px;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.74)}
+.delta b{font-weight:700;color:#fff}
+.chip{
+  display:inline-flex;align-items:center;gap:4px;padding:2px 7px 2px 5px;border-radius:99px;
+  background:rgba(255,255,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.4);
+  font-size:11px;font-weight:700;color:#fff;
+}
+.arrow{font-size:9px;line-height:1}
+
+/* ---------- 14 nuits ---------- */
+.med{flex-direction:row;gap:20px}
+.med-l{width:152px;display:flex;flex-direction:column}
+.med-r{flex:1;display:flex;flex-direction:column;justify-content:center;padding:4px 0 2px}
+.strip{display:flex;align-items:center;gap:4px;height:88px;position:relative}
+.strip::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,.24)}
+.night{flex:1;height:100%;display:flex;flex-direction:column;justify-content:center;position:relative}
+.night i{display:block;width:100%;border-radius:3px}
+.night .up{background:linear-gradient(180deg,#8CF7C0,#0FBF7A);box-shadow:0 0 10px rgba(15,191,122,.5)}
+.night .dn{background:linear-gradient(180deg,#F0264F,#FF9A6B);box-shadow:0 0 10px rgba(240,38,79,.45);margin-top:1px}
+.night.last i{filter:brightness(1.25) saturate(1.2)}
+.night.last::after{
+  content:"";position:absolute;left:50%;bottom:-9px;width:4px;height:4px;margin-left:-2px;
+  border-radius:50%;background:#fff;box-shadow:0 0 8px rgba(255,255,255,.9);
+}
+.night.gap i{background:rgba(255,255,255,.3);box-shadow:none;height:2px !important}
+.legend{display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,.5);margin-top:8px}
+
+/* ---------- écran d'accueil ---------- */
+.home{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+
+/* ---------- états ---------- */
+.grid{display:flex;flex-wrap:wrap;gap:26px}
+.cell{width:176px}
+.cap{margin-top:12px;font-size:12px;color:var(--txt-dim)}
+.cap b{display:block;color:#fff;font-weight:600;font-size:12.5px;margin-bottom:2px}
+.msg{
+  font-family:"Inter Tight",sans-serif;font-weight:600;font-size:16.5px;
+  line-height:1.22;letter-spacing:-.02em;margin-top:auto;
+}
+.msg small{display:block;font-family:"Inter",sans-serif;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.66);margin-top:8px;letter-spacing:0}
+.stale{opacity:.94}
+.stale .fill{filter:grayscale(.85) brightness(.9)}
+
+/* ---------- app ---------- */
+.phone{width:340px;padding:26px 22px 26px;border-radius:44px}
+.p-fig{
+  font-family:"Inter Tight",sans-serif;font-weight:700;font-size:64px;line-height:1;
+  letter-spacing:-.05em;margin-top:20px;display:flex;align-items:baseline;gap:1px;
+  background:linear-gradient(168deg,#fff,#FFC9B0);-webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.p-fig .u{font-size:26px;font-weight:500;opacity:.66;margin:0 2px}
+.p-row{display:flex;justify-content:space-between;padding:13px 0;border-top:1px solid rgba(255,255,255,.16);font-size:13.5px;color:rgba(255,255,255,.82)}
+.p-row span:last-child{font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
+
+@media(max-width:800px){ .w-m{width:100%;max-width:376px} .phone{width:100%;max-width:340px} }
+</style>
+</head>
+<body>
+
+<div class="bg">
+  <div class="blob b1"></div><div class="blob b2"></div>
+  <div class="blob b3"></div><div class="blob b4"></div>
+</div>
+<div class="bg-grain"></div>
+
+<div class="wrap">
+
+  <p class="eyebrow">Dette de sommeil · direction 02</p>
+  <h1>Du verre teinté, pas un feu tricolore.</h1>
+  <p class="lede">
+    La couleur ne dit pas le niveau, elle dit le sens de la marche : vert quand la dette
+    descend, rouge quand elle monte. Elle vit dans le verre — un bloom qui traverse la
+    matière, pas un aplat posé dessus. Grain, spéculaire, jauge liquide.
+  </p>
+
+  <div class="rule"></div>
+  <p class="sect">Les deux humeurs</p>
+
+  <div class="home">
+
+    <!-- SMALL vert -->
+    <div class="w w-s g-green">
+      <div class="grain"></div>
+      <p class="w-label">Dette</p>
+      <div class="fig">10<span class="u">h</span>26</div>
+      <div class="track"><div class="fill" style="width:52%"></div><div class="ghost" style="left:55.4%"></div></div>
+      <p class="delta"><span class="chip"><span class="arrow">▼</span>39 min</span> depuis hier</p>
+    </div>
+
+    <!-- SMALL rouge -->
+    <div class="w w-s g-red">
+      <div class="grain"></div>
+      <p class="w-label">Dette</p>
+      <div class="fig">13<span class="u">h</span>04</div>
+      <div class="track"><div class="fill" style="width:65%"></div><div class="ghost" style="left:58%"></div></div>
+      <p class="delta"><span class="chip"><span class="arrow">▲</span>1 h 24</span> depuis hier</p>
+    </div>
+
+    <!-- MEDIUM -->
+    <div class="w w-m g-green med">
+      <div class="grain"></div>
+      <div class="med-l">
+        <p class="w-label">Dette</p>
+        <div class="fig">10<span class="u">h</span>26</div>
+        <div class="track"><div class="fill" style="width:52%"></div><div class="ghost" style="left:55.4%"></div></div>
+        <p class="delta"><span class="chip"><span class="arrow">▼</span>39 min</span> depuis hier</p>
+      </div>
+      <div class="med-r">
+        <div class="strip" id="strip"></div>
+        <div class="legend"><span>14 nuits</span><span>cette nuit</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="note">
+    Le repère blanc sur la jauge est la lecture d'hier : la couleur du remplissage
+    dit simplement de quel côté de ce repère tu es tombé ce matin. <b>Vert et rouge
+    encodent la dérivée, pas la valeur</b> — ce qui veut dire qu'à 13 h de dette tu
+    peux être en vert, et c'est voulu : c'est la seule façon d'avoir de la couleur
+    forte sans qu'elle hurle tous les matins. Dans la bande des 14 nuits, en revanche,
+    le code est brut : au-dessus de l'axe tu as dormi plus que ton besoin, en dessous
+    moins. Le point blanc marque la nuit dernière, celle qui pèse 15 %.
+  </p>
+
+  <div class="rule"></div>
+  <p class="sect">Les sept états</p>
+
+  <div class="grid" id="states"></div>
+
+  <div class="rule"></div>
+  <p class="sect">Écran principal</p>
+
+  <div class="w phone g-red">
+    <div class="grain"></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline">
+      <p class="w-label">Dette de sommeil</p>
+      <p class="w-label" style="color:rgba(255,255,255,.45)">14 nuits</p>
+    </div>
+    <div class="p-fig">13<span class="u">h</span>04</div>
+    <div class="track" style="margin-top:18px;height:11px"><div class="fill" style="width:65%"></div><div class="ghost" style="left:58%;top:-5px;height:21px"></div></div>
+    <p class="delta" style="font-size:13px;margin-top:12px"><span class="chip"><span class="arrow">▲</span>1 h 24</span> depuis hier · <span class="chip"><span class="arrow">▲</span>2 h 10</span> depuis lundi</p>
+    <div class="strip" id="strip2" style="height:92px;margin-top:24px"></div>
+    <div class="legend" style="margin-bottom:20px"><span>14 nuits</span><span>cette nuit</span></div>
+    <div class="p-row"><span>Cette nuit</span><span>6 h 12</span></div>
+    <div class="p-row"><span>Besoin réglé</span><span>8 h 00</span></div>
+    <div class="p-row"><span>Moyenne sur 14 nuits</span><span>7 h 15</span></div>
+    <div class="p-row"><span>Nuits sans donnée</span><span>1</span></div>
+  </div>
+
+</div>
+
+<script>
+const nights=[-0.8,-1.5,0.1,-0.2,-1.1,-2.1,-0.6,0.6,-0.9,null,-0.3,0,-1.2,-1.8];
+function buildStrip(el){
+  const max=2.2, half=38;
+  nights.forEach((d,i)=>{
+    const n=document.createElement('div');
+    n.className='night'+(i===nights.length-1?' last':'')+(d===null?' gap':'');
+    const up=document.createElement('i'); up.className='up';
+    const dn=document.createElement('i'); dn.className='dn';
+    const h=d===null?2:Math.max(3,Math.abs(d)/max*half);
+    if(d!==null&&d>0){up.style.height=h+'px';dn.style.height='0px';}
+    else{up.style.height='0px';dn.style.height=h+'px';}
+    n.appendChild(up);n.appendChild(dn);el.appendChild(n);
+  });
+}
+buildStrip(document.getElementById('strip'));
+buildStrip(document.getElementById('strip2'));
+
+const gauge=(fill,ghost)=>`<div class="track"><div class="fill" style="width:${fill}%"></div>${ghost!==null?`<div class="ghost" style="left:${ghost}%"></div>`:''}</div>`;
+
+const states=[
+ {c:'g-green',b:`<p class="w-label">Dette</p><div class="fig">10<span class="u">h</span>26</div>${gauge(52,55.4)}<p class="delta"><span class="chip"><span class="arrow">▼</span>39 min</span> depuis hier</p>`,
+  t:'Nominal · en baisse',d:'Verre vert, jauge vive, repère d’hier à droite du niveau.'},
+ {c:'g-green',b:`<p class="w-label">Dette</p><div class="fig">0<span class="u">h</span>00</div>${gauge(1.5,8)}<p class="delta"><span class="chip"><span class="arrow">▼</span>1 h 30</span> depuis hier</p>`,
+  t:'Zéro',d:'Jauge en butée, pas de confettis. Le vert est déjà la récompense.'},
+ {c:'g-red',b:`<p class="w-label">Dette</p><div class="fig">17<span class="u">h</span>40</div>${gauge(88,84)}<p class="delta"><span class="chip"><span class="arrow">▲</span>50 min</span> depuis hier</p>`,
+  t:'Élevé · en hausse',d:'Rouge profond, bloom qui remplit le verre. Le maximum d’intensité du système.'},
+ {c:'g-neut stale',b:`<p class="w-label">Dette</p><div class="fig">10<span class="u">h</span>26</div>${gauge(52,55.4)}<p class="delta">Mesure de 7 h 40</p>`,
+  t:'Donnée en cache',d:'La couleur se retire entièrement. Verre neutre = lecture qui date.'},
+ {c:'g-neut',b:`<p class="w-label">Dette</p><p class="msg">Autoriser l’accès au sommeil<small>Ouvrir l’app pour l’activer</small></p>`,
+  t:'Autorisation manquante',d:'Pas de couleur sans donnée. Le widget renvoie, sans s’excuser.'},
+ {c:'g-neut',b:`<p class="w-label">Dette</p><div class="fig" style="font-size:34px">6 nuits<br><span style="font-size:15px;font-weight:500;opacity:.7">sur 14</span></div>${gauge(0,null)}<p class="delta">Lecture à partir de 14</p>`,
+  t:'Historique insuffisant',d:'Jauge vide plutôt que fausse.'},
+ {c:'g-amber',b:`<p class="w-label">Dette</p><div class="fig">10<span class="u">h</span>26</div>${gauge(52,52)}<p class="delta">Cette nuit non mesurée</p>`,
+  t:'Nuit manquante',d:'Ambre : ni hausse ni baisse, la nuit est sortie du calcul.'},
+];
+const grid=document.getElementById('states');
+states.forEach(s=>{
+  const c=document.createElement('div');c.className='cell';
+  c.innerHTML=`<div class="w w-s ${s.c}"><div class="grain"></div>${s.b}</div><p class="cap"><b>${s.t}</b>${s.d}</p>`;
+  grid.appendChild(c);
+});
+</script>
+</body>
+</html>
