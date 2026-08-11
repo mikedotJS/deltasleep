@@ -21,7 +21,6 @@ private enum PreviewFixture {
         }
     }
 
-    // swiftlint:disable:next function_parameter_count
     static func snapshot(
         debt: SleepDuration,
         trend: Trend,

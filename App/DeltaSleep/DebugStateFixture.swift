@@ -91,7 +91,6 @@ enum DebugStateFixture: String, CaseIterable, Identifiable {
         }
     }
 
-    // swiftlint:disable:next function_parameter_count
     private static func snapshot(
         now: Date,
         debt: SleepDuration,
