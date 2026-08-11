@@ -9,6 +9,12 @@ excluded:
 
 disabled_rules:
   - todo
+  # Conflicts with .swiftformat's `--commas always`, which requires a
+  # trailing comma on the last element of a multi-line collection
+  # literal. SwiftLint's default here forbids exactly what SwiftFormat
+  # enforces — keeping SwiftFormat's convention since it already ran
+  # across the whole tree.
+  - trailing_comma
 
 opt_in_rules:
   - empty_count
