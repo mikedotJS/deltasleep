@@ -1,9 +1,10 @@
 name: CI
 
 on:
+  # No branch filter yet — everything currently happens on one long-lived
+  # feature branch, not via PRs into main. Narrow this to `branches: [main]`
+  # plus `pull_request:` once that changes.
   push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
 
 jobs:
