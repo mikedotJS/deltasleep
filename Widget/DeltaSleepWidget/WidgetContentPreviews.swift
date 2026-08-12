@@ -1,3 +1,4 @@
+import GlassKit
 import SleepDebtCore
 import SnapshotStore
 import SwiftUI
@@ -152,4 +153,37 @@ private enum PreviewFixture {
     DeltaSleepWidget()
 } timeline: {
     PreviewFixture.nightMissing
+}
+
+// Regression canary for the white-widget bug. The nine previews above host a
+// real widget, so `.containerBackground` genuinely applies there — but Xcode's
+// canvas renders them against the *canvas* appearance, and nobody ever flipped
+// it to Light. That is the only reason `Color.clear` survived all the way to a
+// device. This one states the failing case outright: the glass sitting on a
+// light wallpaper. If the backdrop ever loses its opaque base again, this goes
+// white-on-white.
+//
+// It composes the backdrop directly rather than wrapping the entry view on
+// purpose: `.containerBackground(for: .widget)` is a no-op outside a WidgetKit
+// host, so `ZStack { Color.white; DeltaSleepWidgetEntryView(...) }` would look
+// identically broken before *and* after the fix — a misleading canary.
+//
+// `.neutral` is the right tint to canary with: it's the worst case (white at
+// every slot, `fillGlow` alpha 0) and it's what `.cached`, `.noData` and
+// `.insufficientHistory` all map to — the state actually photographed.
+//
+// Same honesty as `GlassSurfacePreviews`: CI compiles `#Preview` bodies and
+// never renders them. This is a canary for a human in the canvas, not a test.
+#Preview("Canary — glass over a light wallpaper") {
+    ZStack {
+        Color.white
+        ZStack {
+            GlassTokens.backdrop.color
+            GlassSurface(tint: .neutral, environment: .widget, cornerRadius: 0)
+        }
+        .frame(width: 158, height: 158)
+        .clipShape(
+            RoundedRectangle(cornerRadius: GlassTokens.cornerRadiusWidget, style: .continuous)
+        )
+    }
 }

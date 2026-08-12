@@ -53,4 +53,19 @@ final class GlassTokensTests: XCTestCase {
         assertClose(GlassTokens.cornerRadiusWidget, 34)
         assertClose(GlassTokens.cornerRadiusPhone, 44)
     }
+
+    func testBackdropIsOpaqueAndMatchesTheMockupsPageBackground() {
+        // body { background:#0B0A18 }
+        //
+        // The alpha assertion is the one that earns its keep. The widget
+        // shipped a *transparent* backdrop (`Color.clear`) and rendered as a
+        // white square on a light wallpaper, because every GlassSurface layer
+        // and every label is white-alpha. This can't catch "the backdrop is
+        // in the wrong layer", but it permanently catches "the backdrop is
+        // transparent" — which is precisely what the bug was.
+        assertClose(GlassTokens.backdrop.red, 11.0 / 255.0)
+        assertClose(GlassTokens.backdrop.green, 10.0 / 255.0)
+        assertClose(GlassTokens.backdrop.blue, 24.0 / 255.0)
+        XCTAssertEqual(GlassTokens.backdrop.alpha, 1)
+    }
 }

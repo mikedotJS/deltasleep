@@ -14,6 +14,22 @@ public enum GlassTokens {
     public static let surfaceGradientMid = RGBA(red: 1, green: 1, blue: 1, alpha: 0.07)
     public static let surfaceGradientEnd = RGBA(red: 1, green: 1, blue: 1, alpha: 0.13)
 
+    // MARK: - Page backdrop (`body { background:#0B0A18 }`)
+
+    /// The near-black the three `surfaceGradient*` stops above were sampled
+    /// against — and the one mockup literal this file never transcribed,
+    /// which is exactly how the widget shipped as a white square.
+    ///
+    /// Not decoration. Every layer `GlassSurface` draws is white-alpha, its
+    /// specular blends `.plusLighter`, its grain `.softLight`, and the whole
+    /// text ladder below is white: all of it only resolves to anything
+    /// visible because something opaque and dark is painted underneath.
+    /// Whoever hosts a `GlassSurface` owes it that backdrop — the app gets
+    /// one from `RootView`'s `.preferredColorScheme(.dark)`, but a widget
+    /// has no colour scheme of its own, only a wallpaper of arbitrary
+    /// luminance, so it has to paint this itself.
+    public static let backdrop = RGBA(r255: 11, g255: 10, b255: 24)
+
     // MARK: - Text opacity ladder (`--txt`, `--txt-dim`, `--txt-faint`)
 
     public static let textPrimary = RGBA(red: 1, green: 1, blue: 1, alpha: 1)

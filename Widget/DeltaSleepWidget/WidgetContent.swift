@@ -16,34 +16,71 @@ struct DeltaSleepWidgetEntryView: View {
     let entry: SnapshotEntry
 
     var body: some View {
-        // Surface as the base with content in an `.overlay` is correct *here*,
-        // unlike on the phone screen (see `MainScreenView.body`, which had to
-        // invert this): WidgetKit proposes a concrete family-sized rect, and
-        // the card is meant to fill the whole widget. Flipping this to
-        // `.background` would make the card shrink-wrap its content and leave
-        // the widget's corners bare.
-        GlassSurface(
-            tint: WidgetTint.tint(for: entry.state),
-            environment: .widget,
-            cornerRadius: GlassTokens.cornerRadiusWidget
-        )
-        .overlay {
-            content
-                .padding(GlassTokens.widgetPadding)
+        content
+            .padding(GlassTokens.widgetPadding)
+            // Restates the geometry the old `.overlay { content }` got for
+            // free (an overlay centres and fills its base), now that the
+            // surface no longer sits in this layer.
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .widgetURL(URL(string: "deltasleep://open"))
+            .containerBackground(for: .widget) { backdrop }
+            // Dynamic Type (docs/IMPLEMENTATION_PLAN.md §5, P9): GlassKit's
+            // shared text (`DebtFigure`, `StateMessage`) scales with the
+            // environment's type size, same as the phone screen — but a
+            // widget's frame is fixed by its family, not scrollable, so
+            // letting it grow all the way to the accessibility sizes would
+            // overflow the card rather than reflow it. Clamped to a band
+            // that still grows for readability without doing that; the
+            // phone screen (`MainScreenView`) carries no such clamp.
+            .dynamicTypeSize(.xSmall ... .xxxLarge)
+    }
+
+    /// The opaque dark base plus the glass, in the one layer WidgetKit
+    /// guarantees reaches the widget's real edges.
+    ///
+    /// This was `Color.clear`, betting that iOS 26 composites a live system
+    /// Liquid Glass container behind widget content (issue #1's S1 verdict,
+    /// which flags itself as documented-capability analysis rather than
+    /// on-device verification). A device falsified it: on a light wallpaper
+    /// the widget rendered as a white square, because every `GlassSurface`
+    /// layer is white-alpha and every label is white. The app hit the
+    /// identical bug and fixed it at `RootView`'s
+    /// `.preferredColorScheme(.dark)`; a widget has no colour scheme of its
+    /// own — only a wallpaper of arbitrary luminance — so it paints its own.
+    ///
+    /// Two reasons this belongs in `containerBackground` rather than behind
+    /// `content`:
+    ///  - WidgetKit insets *content* by its default margins but never the
+    ///    container background. A surface drawn in the content layer would
+    ///    float inside a dark bezel instead of bleeding to the edges.
+    ///  - The specular's `.plusLighter` and the grain's `.softLight` blend
+    ///    against what is beneath them *in the same compositing group*. Here
+    ///    that's the opaque colour directly below them; split across two
+    ///    WidgetKit layers there is no defined base.
+    ///
+    /// It also means the glass participates correctly in background removal:
+    /// StandBy and the Lock Screen strip the container background, so the
+    /// translucent card goes with it rather than being left floating.
+    ///
+    /// `cornerRadius: 0` is deliberate — WidgetKit already clips the
+    /// container to the platform's own shape, whose radius the app doesn't
+    /// choose. A second 34pt clip here could only cut *inside* that shape and
+    /// shave the corners, never round them further.
+    ///
+    /// Not handled, deliberately: iOS 18+ tinted/accented Home Screen modes.
+    /// An all-white view tree collapses to a uniform block under `.accented`
+    /// — same root cause, but a different pipeline (`\.widgetRenderingMode`)
+    /// and a design decision (which elements are `.widgetAccentable`) rather
+    /// than a bug fix. Tracked separately.
+    private var backdrop: some View {
+        ZStack {
+            GlassTokens.backdrop.color
+            GlassSurface(
+                tint: WidgetTint.tint(for: entry.state),
+                environment: .widget,
+                cornerRadius: 0
+            )
         }
-        .widgetURL(URL(string: "deltasleep://open"))
-        .containerBackground(for: .widget) {
-            Color.clear
-        }
-        // Dynamic Type (docs/IMPLEMENTATION_PLAN.md §5, P9): GlassKit's
-        // shared text (`DebtFigure`, `StateMessage`) scales with the
-        // environment's type size, same as the phone screen — but a
-        // widget's frame is fixed by its family, not scrollable, so
-        // letting it grow all the way to the accessibility sizes would
-        // overflow the card rather than reflow it. Clamped to a band
-        // that still grows for readability without doing that; the
-        // phone screen (`MainScreenView`) carries no such clamp.
-        .dynamicTypeSize(.xSmall ... .xxxLarge)
     }
 
     @ViewBuilder
