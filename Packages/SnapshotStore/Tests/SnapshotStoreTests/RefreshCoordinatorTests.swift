@@ -64,6 +64,29 @@ final class RefreshCoordinatorTests: XCTestCase {
         }
     }
 
+    /// Same as `InMemorySnapshotStore` but also records the order writes
+    /// happen in, for the audit fix (#9) that requires the snapshot to
+    /// land before availability flips to `.sufficient`.
+    private final class OrderTrackingSnapshotStore: SnapshotStoring, @unchecked Sendable {
+        private(set) var snapshot: DebtSnapshot?
+        private(set) var historyAvailability: HistoryAvailability?
+        private(set) var writeOrder: [String] = []
+
+        func readSnapshot() -> DebtSnapshot? { snapshot }
+
+        func writeSnapshot(_ snapshot: DebtSnapshot) throws {
+            self.snapshot = snapshot
+            writeOrder.append("snapshot")
+        }
+
+        func readHistoryAvailability() -> HistoryAvailability? { historyAvailability }
+
+        func writeHistoryAvailability(_ availability: HistoryAvailability) throws {
+            historyAvailability = availability
+            writeOrder.append("availability")
+        }
+    }
+
     private final class RecordingReloader: WidgetReloading, @unchecked Sendable {
         private(set) var reloadCount = 0
 
@@ -204,5 +227,87 @@ final class RefreshCoordinatorTests: XCTestCase {
         )
 
         XCTAssertEqual(store.readHistoryAvailability(), .sufficient)
+    }
+
+    /// Audit fix #1: a fetch that transiently returns zero measured nights
+    /// must not wipe an already-established history back to `.none` — the
+    /// prior snapshot and availability should survive untouched.
+    func testEmptyFetchAfterEstablishedHistoryDoesNotWipeIt() async throws {
+        let cal = utcCalendar()
+        let referenceDate = date(2026, 8, 11, calendar: cal)
+        let samples = fullHistorySamples(
+            forDays: 21, hours: 8, referenceDate: referenceDate, calendar: cal
+        )
+        let store = InMemorySnapshotStore()
+        let reloader = RecordingReloader()
+
+        _ = try await RefreshCoordinator.refresh(
+            need: SleepNeed(.hours(8)), referenceDate: referenceDate, now: referenceDate,
+            calendar: cal, source: FakeSleepSource(samples: samples), store: store,
+            reloader: reloader
+        )
+        XCTAssertEqual(store.readHistoryAvailability(), .sufficient)
+        let establishedSnapshot = store.readSnapshot()
+        XCTAssertNotNil(establishedSnapshot)
+
+        // A later refresh's fetch comes back completely empty (transient
+        // HealthKit hiccup, not a real "no data ever" situation).
+        let outcome = try await RefreshCoordinator.refresh(
+            need: SleepNeed(.hours(8)),
+            referenceDate: referenceDate.addingTimeInterval(3600),
+            now: referenceDate.addingTimeInterval(3600),
+            calendar: cal,
+            source: FakeSleepSource(samples: []),
+            store: store,
+            reloader: reloader
+        )
+
+        XCTAssertEqual(outcome, .noData, "the caller still sees .noData for this refresh")
+        XCTAssertEqual(
+            store.readHistoryAvailability(), .sufficient,
+            "but the previously-established history must survive, not be wiped to .none"
+        )
+        XCTAssertEqual(
+            store.readSnapshot(), establishedSnapshot,
+            "the prior snapshot must be untouched"
+        )
+    }
+
+    /// Audit fix #1, fresh-install counterpart: with no prior history at
+    /// all, an empty fetch must still correctly write `.none` — this is
+    /// the one case where there's genuinely nothing to protect.
+    func testEmptyFetchWithNoPriorHistoryStillWritesNone() async throws {
+        let cal = utcCalendar()
+        let referenceDate = date(2026, 8, 11, calendar: cal)
+        let store = InMemorySnapshotStore()
+
+        let outcome = try await RefreshCoordinator.refresh(
+            need: SleepNeed(.hours(8)), referenceDate: referenceDate, now: referenceDate,
+            calendar: cal, source: FakeSleepSource(samples: []), store: store,
+            reloader: RecordingReloader()
+        )
+
+        XCTAssertEqual(outcome, .noData)
+        XCTAssertEqual(store.readHistoryAvailability(), HistoryAvailability.none)
+    }
+
+    /// Audit fix #9: the snapshot must be written before availability
+    /// flips to `.sufficient`, so an interruption between the two writes
+    /// never leaves `.sufficient` paired with a stale/missing snapshot.
+    func testSnapshotIsWrittenBeforeAvailabilityFlipsToSufficient() async throws {
+        let cal = utcCalendar()
+        let referenceDate = date(2026, 8, 11, calendar: cal)
+        let samples = fullHistorySamples(
+            forDays: 21, hours: 8, referenceDate: referenceDate, calendar: cal
+        )
+        let store = OrderTrackingSnapshotStore()
+
+        _ = try await RefreshCoordinator.refresh(
+            need: SleepNeed(.hours(8)), referenceDate: referenceDate, now: referenceDate,
+            calendar: cal, source: FakeSleepSource(samples: samples), store: store,
+            reloader: RecordingReloader()
+        )
+
+        XCTAssertEqual(store.writeOrder, ["snapshot", "availability"])
     }
 }

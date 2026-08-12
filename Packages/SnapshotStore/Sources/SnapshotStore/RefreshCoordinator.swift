@@ -70,7 +70,19 @@ public enum RefreshCoordinator {
         // (docs/IMPLEMENTATION_PLAN.md, and issue #4's status note).
         let measuredCount = nights.filter { !$0.isGap }.count
         guard measuredCount > 0 else {
-            try store.writeHistoryAvailability(.none)
+            // Audit finding #1: a single fetch returning zero measured
+            // nights used to overwrite an already-established history
+            // with `.none` unconditionally — indistinguishable from "never
+            // had any data" even when this was a transient, empty
+            // HealthKit response. Only degrade when there wasn't already
+            // a cached history to protect; a genuinely fresh install (no
+            // prior snapshot, no prior availability) still correctly
+            // writes `.none`.
+            let hadHistory = store.readSnapshot() != nil
+                || (store.readHistoryAvailability() ?? .none) != .none
+            if !hadHistory {
+                try store.writeHistoryAvailability(.none)
+            }
             return .noData
         }
         guard measuredCount >= DebtEngineConstants.minimumHistoryNights else {
@@ -102,10 +114,21 @@ public enum RefreshCoordinator {
             return .noData
         }
 
-        try store.writeHistoryAvailability(.sufficient)
+        // Audit finding #9: write the snapshot *before* flipping
+        // availability to `.sufficient`. The two files aren't written
+        // transactionally (a separate process — the widget — can read
+        // between the two calls, or the app can be killed mid-write), so
+        // if only one write lands it should be the snapshot: an
+        // `.insufficient`/`.none` availability with a fresh snapshot
+        // already on disk degrades harmlessly (classify ignores the
+        // snapshot in that branch), whereas the old order could leave
+        // `.sufficient` paired with a still-nil or stale snapshot, which
+        // `WidgetState.classify` falls back to `.noData` for — a false
+        // "access needed" screen on the very day history became sufficient.
         let previous = store.readSnapshot()
         let didChange = previous.map { !$0.hasSameContent(as: snapshot) } ?? true
         try store.writeSnapshot(snapshot)
+        try store.writeHistoryAvailability(.sufficient)
         if didChange {
             reloader.reloadAllTimelines()
         }

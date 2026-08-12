@@ -80,11 +80,17 @@ public enum WidgetState: Equatable, Sendable {
             return .insufficientHistory(measuredNights: measured, requiredNights: required)
         case .sufficient:
             guard let snapshot else { return .noData }
-            if now.timeIntervalSince(snapshot.computedAt) > staleAfter {
-                return .cached(computedAt: snapshot.computedAt)
-            }
+            // Gap takes priority over staleness: a missing last night is
+            // *why* the reading looks unhelpful, and is more actionable
+            // than "cached" for the user (audit finding §32 — staleness
+            // used to be checked first, silently hiding a missing night
+            // behind a generic "cached" state for as long as the snapshot
+            // stayed stale).
             if snapshot.lastNightIsGap {
                 return .nightMissing(debt: snapshot.debt)
+            }
+            if now.timeIntervalSince(snapshot.computedAt) > staleAfter {
+                return .cached(computedAt: snapshot.computedAt)
             }
             if snapshot.debt.seconds <= .ulpOfOne {
                 return .zero
