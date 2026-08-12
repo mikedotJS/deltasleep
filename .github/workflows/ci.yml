@@ -42,6 +42,25 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO
 
+      # The step above only ever compiles Debug against the Simulator SDK
+      # — release-testflight.yml's real archive uses Release against the
+      # device SDK, a combination nothing here has ever compiled before
+      # this step existed. Unsigned, since no Apple Developer credentials
+      # exist in this CI (see release-testflight.yml for the signed
+      # version) — this can't catch a signing/provisioning problem, but
+      # it does catch a Release-only or device-SDK-only compile error,
+      # for free, before anyone spends a real App Store Connect upload
+      # attempt finding it instead.
+      - name: Archive app + widget for iOS device (unsigned, Release config)
+        run: |
+          xcodebuild archive \
+            -project DeltaSleep.xcodeproj \
+            -scheme DeltaSleep \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/DeltaSleep.xcarchive \
+            CODE_SIGNING_ALLOWED=NO
+
   lint:
     runs-on: macos-latest
     steps:
