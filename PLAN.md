@@ -33,12 +33,16 @@ Vérif: `swift test --package-path Packages/HealthSleepSource && swift test --pa
 - [x] agrégation simple par nuit (réutilise `Night`, pas de nouveau modèle)
 - [x] tests sur la nouvelle plage de fetch
 
-## Phase 4 — Historique étendu : UI [ ]
+## Phase 4 — Historique étendu : UI [x]
 Objectif: écran Historique accessible depuis Réglages, liste/scroll des nuits passées au-delà des 14 dernières, état vide géré
 Vérif: build simulateur + parcours manuel (Réglages → Historique → retour), vérifier l'état vide avec peu de données
-- [ ] `HistoryView` (liste simple : date + durée/gap par nuit)
-- [ ] lien Réglages → Historique
-- [ ] état vide avec copie explicite (pas d'écran blanc)
+- [x] `HistoryView` (liste simple : date + durée/gap par nuit)
+- [x] lien Réglages → Historique
+- [x] état vide avec copie explicite (pas d'écran blanc)
+
+Note: parcours manuel sur simulateur impossible dans cet environnement
+(cible de déploiement iOS 26.0, aucun runtime simulateur disponible ici
+— même limite qu'en Phase 1). Build/link structurel vérifié.
 
 ## Phase 5 — #22 et NOTE restants [ ]
 Objectif: chaque finding restant traité individuellement, aucune régression sur l'existant

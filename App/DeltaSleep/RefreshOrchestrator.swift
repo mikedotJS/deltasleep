@@ -132,6 +132,18 @@ actor RefreshOrchestrator {
         userDefaults.removeObject(forKey: Self.didRequestAuthorizationKey)
     }
 
+    /// Read-only history fetch for `HistoryView` (post-audit PLAN.md
+    /// Phase 4) — goes straight to HealthKit via `SleepIngestion.days`/
+    /// `nights(for:from:calendar:)`, entirely separate from the debt
+    /// engine's own 21-day rolling window (`RefreshCoordinator.fetchWindow`)
+    /// and its cached snapshot. Never writes anything — browsing history
+    /// shouldn't perturb the cached debt figure or trigger a widget
+    /// reload. Returns oldest-first, matching `SleepIngestion.days`.
+    func history(daysBack: Int, endingOn date: Date = Date()) async -> [Night] {
+        let days = SleepIngestion.days(count: daysBack, endingOn: date, calendar: calendar)
+        return await (try? SleepIngestion.nights(for: days, from: source, calendar: calendar)) ?? []
+    }
+
     /// The full denial-ambiguity heuristic (P2's `HealthAuthorizationState`)
     /// — combines the app's own "did we ask" flag with two live HealthKit
     /// checks. Used by P8 to tell "never asked yet" apart from "asked, and

@@ -28,6 +28,12 @@ final class SettingsViewModel {
         self.onboardingViewModel = onboardingViewModel
     }
 
+    /// Builds `HistoryView`'s view model (Phase 4) — keeps `orchestrator`
+    /// `private` here rather than exposing it further just for this link.
+    func makeHistoryViewModel() -> HistoryViewModel {
+        HistoryViewModel(orchestrator: orchestrator)
+    }
+
     /// "Revoir l'explication" — a pure informational replay. Doesn't
     /// touch HealthKit authorization or any cached data: the user
     /// already granted (or was asked about) access, this just shows the

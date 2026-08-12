@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Phase 2 of the post-audit plan (PLAN.md): "Revoir l'explication" and
-/// "Effacer mes données" are fully wired; "Historique" stays a placeholder
-/// until Phase 4 builds the screen it links to.
+/// Phases 2 and 4 of the post-audit plan (PLAN.md): all 3 rows are
+/// fully wired — "Revoir l'explication" and "Effacer mes données"
+/// (Phase 2), "Historique" (Phase 4).
 struct SettingsView: View {
     let viewModel: SettingsViewModel
     @State private var showEraseConfirmation = false
@@ -17,8 +17,11 @@ struct SettingsView: View {
                     Label("Revoir l'explication", systemImage: "arrow.counterclockwise")
                 }
 
-                Label("Historique", systemImage: "clock.arrow.circlepath")
-                    .foregroundStyle(.secondary)
+                NavigationLink {
+                    HistoryView(viewModel: viewModel.makeHistoryViewModel())
+                } label: {
+                    Label("Historique", systemImage: "clock.arrow.circlepath")
+                }
             }
 
             Section {
