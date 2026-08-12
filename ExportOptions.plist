@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Export options for the TestFlight release archive (docs/RELEASE.md).
+  `APPLE_TEAM_ID_PLACEHOLDER` is substituted by
+  .github/workflows/release-testflight.yml from the APPLE_TEAM_ID repo
+  secret before export — never committed as a real value, since this file
+  is tracked and a real team ID belongs in a secret, not in source.
+
+  `destination: upload` (Xcode 13+) makes `xcodebuild -exportArchive` both
+  export the .ipa AND upload it straight to App Store Connect in one step,
+  given the API key auth flags on the command line — no separate
+  altool/Transporter call needed.
+-->
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>destination</key>
+	<string>upload</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>teamID</key>
+	<string>APPLE_TEAM_ID_PLACEHOLDER</string>
+	<key>uploadSymbols</key>
+	<true/>
+</dict>
+</plist>

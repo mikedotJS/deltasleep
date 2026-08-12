@@ -1,0 +1,105 @@
+name: Release to TestFlight
+
+# Manual only — this uploads a real build to App Store Connect, so it
+# never runs on a plain push the way ci.yml does. See docs/RELEASE.md for
+# the one-time Apple Developer Portal / App Store Connect setup this
+# depends on, and for what each secret below actually is.
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: macos-latest
+    # All of these must exist as repository secrets (Settings → Secrets
+    # and variables → Actions) before this job can succeed — see
+    # docs/RELEASE.md for exactly where each one comes from. The job
+    # fails fast, with a clear message, if any are missing.
+    env:
+      BUNDLE_ID_PREFIX: ${{ secrets.BUNDLE_ID_PREFIX }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required secrets are set
+        run: |
+          missing=()
+          [ -z "$BUNDLE_ID_PREFIX" ] && missing+=("BUNDLE_ID_PREFIX")
+          [ -z "$APPLE_TEAM_ID" ] && missing+=("APPLE_TEAM_ID")
+          [ -z "$APP_STORE_CONNECT_KEY_ID" ] && missing+=("APP_STORE_CONNECT_KEY_ID")
+          [ -z "$APP_STORE_CONNECT_ISSUER_ID" ] && missing+=("APP_STORE_CONNECT_ISSUER_ID")
+          [ -z "$APP_STORE_CONNECT_API_KEY_P8_BASE64" ] && missing+=("APP_STORE_CONNECT_API_KEY_P8_BASE64")
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "::error::Missing required secrets: ${missing[*]}. See docs/RELEASE.md."
+            exit 1
+          fi
+
+      - name: Show available Xcode versions
+        run: ls /Applications | grep Xcode
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      # `com.mikedotjs.deltasleep` is project.yml's placeholder domain
+      # (see its own comment) — swapped here, in the CI checkout only,
+      # never committed. This one substitution covers project.yml's
+      # `bundleIdPrefix` and both targets' `PRODUCT_BUNDLE_IDENTIFIER`
+      # (the widget's `.widget` suffix survives it unchanged) and both
+      # entitlements files' `group.com.mikedotjs.deltasleep` App Group.
+      - name: Substitute the real bundle ID
+        run: |
+          sed -i '' "s/com\.mikedotjs\.deltasleep/${BUNDLE_ID_PREFIX}/g" \
+            project.yml \
+            App/DeltaSleep/DeltaSleep.entitlements \
+            Widget/DeltaSleepWidget/DeltaSleepWidget.entitlements
+          sed -i '' "s/APPLE_TEAM_ID_PLACEHOLDER/${APPLE_TEAM_ID}/g" ExportOptions.plist
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Import App Store Connect API key
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$APP_STORE_CONNECT_API_KEY_P8_BASE64" | base64 --decode > \
+            ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+
+      # Every TestFlight upload for a bundle ID needs a build number
+      # (CURRENT_PROJECT_VERSION) higher than the last one App Store
+      # Connect has seen — project.yml's static "1" only works for a
+      # single upload. The GitHub Actions run number is monotonically
+      # increasing per-workflow and good enough as a real build number.
+      - name: Archive
+        run: |
+          xcodebuild archive \
+            -project DeltaSleep.xcodeproj \
+            -scheme DeltaSleep \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/DeltaSleep.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
+            -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
+            -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}"
+
+      # `destination: upload` in ExportOptions.plist means this step
+      # exports the .ipa AND ships it to App Store Connect in one call —
+      # no separate altool/Transporter step.
+      - name: Export and upload to App Store Connect
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/DeltaSleep.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
+            -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
+            -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID"
+
+      - name: Clean up API key
+        if: always()
+        run: rm -rf ~/.appstoreconnect/private_keys

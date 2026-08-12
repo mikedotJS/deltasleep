@@ -1,4 +1,5 @@
 import Foundation
+import HealthSleepSource
 import Observation
 import SleepDebtCore
 import SnapshotStore
@@ -13,6 +14,11 @@ final class MainScreenViewModel {
     private(set) var state: WidgetState = .noData
     private(set) var snapshot: DebtSnapshot?
     private(set) var isRefreshing = false
+    /// Only meaningful (non-nil) while `state == .noData` — resolved via
+    /// P2's `HealthAuthorizationState` heuristic so `MainScreenView` can
+    /// offer the right recovery action instead of always assuming
+    /// "denied, go to Settings" (see `refreshAuthStateIfNeeded`).
+    private(set) var authState: HealthAuthorizationState?
     var sleepNeedHours: Double
 
     private let store: SnapshotStoring
@@ -32,6 +38,7 @@ final class MainScreenViewModel {
         isRefreshing = true
         await orchestrator.refreshNow()
         reloadFromCache(now: Date())
+        await refreshAuthStateIfNeeded()
         isRefreshing = false
     }
 
@@ -45,7 +52,29 @@ final class MainScreenViewModel {
         isRefreshing = true
         await orchestrator.refreshNow(needChangedToday: changed)
         reloadFromCache(now: Date())
+        await refreshAuthStateIfNeeded()
         isRefreshing = false
+    }
+
+    /// The "Autoriser l'accès au sommeil" recovery action on `.noData`
+    /// (`MainScreenView`) — re-triggers the system prompt when
+    /// `authState` says that can actually do something
+    /// (`.needsPrompt`), then refreshes so a grant takes effect
+    /// immediately rather than waiting for the next scene activation.
+    func requestAccessAgain() async {
+        await orchestrator.requestAuthorizationAgain()
+        await refresh()
+    }
+
+    /// Only resolved while `.noData` — the two HealthKit status checks
+    /// `resolveAuthorizationState()` makes aren't worth paying for on
+    /// every refresh when no other state has any use for the result.
+    private func refreshAuthStateIfNeeded() async {
+        guard case .noData = state else {
+            authState = nil
+            return
+        }
+        authState = await orchestrator.resolveAuthorizationState()
     }
 
     private func reloadFromCache(now: Date) {

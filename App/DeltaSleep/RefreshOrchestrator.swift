@@ -8,7 +8,15 @@ import SnapshotStore
 /// points into one `RefreshCoordinator.refresh` call each, so there's
 /// exactly one code path that fetches, computes, persists, and reloads
 /// widget timelines (docs/IMPLEMENTATION_PLAN.md §5, P3).
-final class RefreshOrchestrator: @unchecked Sendable {
+///
+/// An `actor`, not a plain class: `refreshNow` can legitimately be
+/// triggered concurrently from more than one place (the background
+/// HealthKit observer callback in `start()`, and every scene-activation
+/// or user-initiated refresh) — actor isolation is what makes
+/// `lastRefresh` itself safe to read and mutate from those overlapping
+/// callers; see `refreshNow`'s own doc comment for why that alone still
+/// isn't enough and the chaining exists too.
+actor RefreshOrchestrator {
     private static let didRequestAuthorizationKey = "didRequestHealthKitAuthorization"
 
     private let source: HealthKitSleepSource
@@ -17,6 +25,10 @@ final class RefreshOrchestrator: @unchecked Sendable {
     private let needStore: SleepNeedStore
     private let calendar: Calendar
     private let userDefaults: UserDefaults
+
+    /// The most recently requested refresh, kept only so the next call
+    /// can chain onto it — see `refreshNow`.
+    private var lastRefresh: Task<Void, Never>?
 
     init(
         store: SnapshotStoring,
@@ -59,6 +71,18 @@ final class RefreshOrchestrator: @unchecked Sendable {
         userDefaults.set(true, forKey: Self.didRequestAuthorizationKey)
     }
 
+    /// Unconditionally re-triggers the system prompt — unlike
+    /// `requestAuthorizationIfNeeded()`, which only ever asks once.
+    /// `resolveAuthorizationState()`'s `.needsPrompt` case can recur
+    /// after the very first ask (HealthKit reports
+    /// `.shouldPromptAgain` when a new read type needs fresh consent),
+    /// so `MainScreenViewModel`'s recovery action needs a way to ask
+    /// again that the once-only guard above would otherwise block.
+    func requestAuthorizationAgain() async {
+        try? await source.requestAuthorization()
+        userDefaults.set(true, forKey: Self.didRequestAuthorizationKey)
+    }
+
     /// The full denial-ambiguity heuristic (P2's `HealthAuthorizationState`)
     /// — combines the app's own "did we ask" flag with two live HealthKit
     /// checks. Used by P8 to tell "never asked yet" apart from "asked, and
@@ -85,7 +109,32 @@ final class RefreshOrchestrator: @unchecked Sendable {
     /// immediately following a sleep-need edit (P7), so `Trend` freezes
     /// for today rather than a settings change alone painting the figure
     /// green or red.
+    ///
+    /// Chains onto any refresh already in flight instead of running
+    /// concurrently with it. Without this, two overlapping calls — the
+    /// realistic pair is the background observer's callback and a
+    /// scene-activation refresh landing at nearly the same moment — can
+    /// *finish* in a different order than they were *requested* in:
+    /// `RefreshCoordinator.refresh` always writes unconditionally (so
+    /// `computedAt` stays current even when content doesn't change), so
+    /// whichever call finishes last wins the write, even if it started
+    /// first and read older source data as its own "previous" for the
+    /// change diff. That could silently overwrite an already-displayed,
+    /// more current snapshot with a stale one and no reload to fix it.
+    /// Chaining makes "requested" and "finished" the same order, so the
+    /// last call to finish is always also the one with the freshest
+    /// data.
     func refreshNow(needChangedToday: Bool = false) async {
+        let previous = lastRefresh
+        let task = Task {
+            _ = await previous?.value
+            await self.performRefresh(needChangedToday: needChangedToday)
+        }
+        lastRefresh = task
+        await task.value
+    }
+
+    private func performRefresh(needChangedToday: Bool) async {
         let now = Date()
         _ = try? await RefreshCoordinator.refresh(
             need: needStore.current,

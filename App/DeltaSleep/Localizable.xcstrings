@@ -32,6 +32,26 @@
         }
       }
     },
+    "Aucune demande d'accès n'a encore abouti": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No access request has gone through yet"
+          }
+        }
+      }
+    },
+    "Autoriser l'accès": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow access"
+          }
+        }
+      }
+    },
     "Autoriser l'accès au sommeil": {
       "localizations": {
         "en": {

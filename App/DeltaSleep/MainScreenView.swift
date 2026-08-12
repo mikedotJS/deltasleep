@@ -1,4 +1,5 @@
 import GlassKit
+import HealthSleepSource
 import SleepDebtCore
 import SwiftUI
 import UIKit
@@ -131,16 +132,7 @@ struct MainScreenView: View {
                 nightBars: viewModel.snapshot?.nightBars ?? []
             )
         case .noData:
-            VStack(alignment: .leading, spacing: 12) {
-                StateMessage(
-                    title: "Autoriser l'accès au sommeil",
-                    subtitle: "Réglages → Santé → Accès aux données"
-                )
-                .accessibilityElement(children: .combine)
-                Button("Ouvrir les réglages", action: openSettings)
-                    .font(.system(size: smallSize, weight: .semibold))
-                    .foregroundStyle(.white)
-            }
+            noDataBody
         case let .insufficientHistory(measured, required):
             VStack(alignment: .leading, spacing: 8) {
                 Text("\(measured) nuits sur \(required)")
@@ -241,6 +233,41 @@ struct MainScreenView: View {
     private func openSettings() {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
         UIApplication.shared.open(url)
+    }
+
+    /// `.noData`'s recovery action isn't one-size-fits-all:
+    /// `viewModel.authState` (P2's `HealthAuthorizationState`, resolved
+    /// only while this state is showing) tells `.needsPrompt` — where
+    /// re-triggering the system prompt can actually grant access — apart
+    /// from everything else, where it's already been asked and only
+    /// Settings can change the answer. Defaults to the Settings action
+    /// (the safe, always-correct fallback) while `authState` hasn't
+    /// resolved yet or reads as anything other than `.needsPrompt`.
+    private var noDataBody: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            StateMessage(
+                title: "Autoriser l'accès au sommeil",
+                subtitle: noDataSubtitle
+            )
+            .accessibilityElement(children: .combine)
+            if viewModel.authState == .needsPrompt {
+                Button("Autoriser l'accès") {
+                    Task { await viewModel.requestAccessAgain() }
+                }
+                .font(.system(size: smallSize, weight: .semibold))
+                .foregroundStyle(.white)
+            } else {
+                Button("Ouvrir les réglages", action: openSettings)
+                    .font(.system(size: smallSize, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+        }
+    }
+
+    private var noDataSubtitle: LocalizedStringKey {
+        viewModel.authState == .needsPrompt
+            ? "Aucune demande d'accès n'a encore abouti"
+            : "Réglages → Santé → Accès aux données"
     }
 }
 
