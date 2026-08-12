@@ -11,12 +11,12 @@
 > ces items n'est un bug BLOQUANT/RISQUE — les 24 précédents sont déjà
 > corrigés (commits antérieurs).
 
-## Phase 1 — Écran Réglages : squelette et navigation [ ]
+## Phase 1 — Écran Réglages : squelette et navigation [x]
 Objectif: nouvel écran Réglages accessible depuis l'écran principal, navigation en place (premier NavigationStack de l'app), aucune action encore câblée
 Vérif: `xcodebuild build -project DeltaSleep.xcodeproj -scheme DeltaSleep -destination 'generic/platform=iOS Simulator' -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO` + lancer sur simulateur, naviguer vers Réglages et retour
-- [ ] `NavigationStack` autour de `MainScreenView` dans `RootView`
-- [ ] icône d'accès (engrenage) dans le header de `MainScreenView`
-- [ ] `SettingsView` avec 3 lignes placeholder (Revoir l'explication / Historique / Effacer mes données) sans action
+- [x] `NavigationStack` autour de `MainScreenView` dans `RootView`
+- [x] icône d'accès (engrenage) dans le header de `MainScreenView`
+- [x] `SettingsView` avec 3 lignes placeholder (Revoir l'explication / Historique / Effacer mes données) sans action
 
 ## Phase 2 — Actions Réglages : revoir onboarding + effacer les données [ ]
 Objectif: les 2 actions simples fonctionnent de bout en bout (le trou "historique" est traité en phase 3-4, plus gros)

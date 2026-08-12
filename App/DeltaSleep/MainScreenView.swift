@@ -47,6 +47,19 @@ struct MainScreenView: View {
         .task {
             await viewModel.refresh()
         }
+        // Phase 1 of the post-audit plan (PLAN.md): the app's first
+        // navigable screen beyond the flat onboarding/main-screen
+        // toggle. No actions wired yet — that's Phase 2.
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    SettingsView()
+                } label: {
+                    Image(systemName: "gearshape")
+                        .foregroundStyle(.white.opacity(0.8))
+                }
+            }
+        }
     }
 
     private var content: some View {

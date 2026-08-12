@@ -12,7 +12,12 @@ struct RootView: View {
     var body: some View {
         Group {
             if onboardingViewModel.hasCompletedOnboarding {
-                MainScreenView(viewModel: mainScreenViewModel)
+                // The app's first real navigation stack — Settings
+                // (Phase 1 of the post-audit plan) is the first screen
+                // that isn't a flat top-level toggle in RootView itself.
+                NavigationStack {
+                    MainScreenView(viewModel: mainScreenViewModel)
+                }
             } else {
                 OnboardingView(viewModel: onboardingViewModel)
             }
