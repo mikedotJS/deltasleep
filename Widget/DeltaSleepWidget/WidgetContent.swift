@@ -316,12 +316,22 @@ private struct InsufficientHistoryContent: View {
             // Audit finding #11: same "1 nuits" mistake as the app's
             // equivalent screen — measured == 1 is real, the day after
             // install.
+            // Shrink rather than truncate. Recovering WidgetKit's default
+            // margins (see `DeltaSleepWidget`'s `.contentMarginsDisabled()`)
+            // buys back ~32pt, but "9 nuits" at 34pt bold rounded is still
+            // wider than a `systemSmall` card at larger Dynamic Type sizes —
+            // and "9 n…" tells the user nothing. Same treatment `DebtFigure`
+            // already carries for the same reason (audit finding #15).
             Text(measured == 1 ? "1 nuit" : "\(measured) nuits")
                 .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
             Text("sur \(required)")
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(.white.opacity(0.7))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
             LiquidGauge(
                 fillFraction: GaugeMapping.minimumVisibleFraction,
                 ghostFraction: nil,
@@ -329,9 +339,15 @@ private struct InsufficientHistoryContent: View {
                 height: .compact
             )
             .padding(.top, 14)
+            // Allowed to wrap to a second line rather than shrink: at 11.5pt
+            // this is already the smallest copy on the card, and "Lecture à
+            // part…" loses the one number that makes the sentence mean
+            // anything.
             Text("Lecture à partir de \(required)")
                 .font(.system(size: 11.5, weight: .medium))
                 .foregroundStyle(.white.opacity(0.74))
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
                 .padding(.top, 9)
         }
     }

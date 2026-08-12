@@ -71,5 +71,14 @@ struct DeltaSleepWidget: Widget {
         .configurationDisplayName("deltasleep")
         .description("Dette de sommeil")
         .supportedFamilies([.systemSmall, .systemMedium])
+        // `GlassTokens.widgetPadding` (18pt) is the mockup's `.w { padding:18px }`
+        // and is meant to be the card's *only* inset. WidgetKit otherwise stacks
+        // its own default margins (~16pt) on top, which on `systemSmall` left
+        // roughly 90pt of usable width out of 158 — "9 nuits" at 34pt truncated
+        // to "9 n…" on a real device. The container background is drawn outside
+        // these margins either way, so this only moves content; if the platform
+        // ever stops applying default margins this line becomes a no-op rather
+        // than a regression.
+        .contentMarginsDisabled()
     }
 }
