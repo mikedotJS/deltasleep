@@ -53,7 +53,7 @@ struct DeltaSleepWidgetEntryView: View {
                 family: family
             )
             .accessibilityElement(children: .combine)
-            .accessibilityLabel(nominalLabel(debt: debt, trend: trend))
+            .accessibilityLabel(nominalLabel(debt: debt, trend: trend) + nightStripSuffix)
         case .zero:
             FigureCard(
                 debt: .zero,
@@ -64,7 +64,7 @@ struct DeltaSleepWidgetEntryView: View {
                 family: family
             )
             .accessibilityElement(children: .combine)
-            .accessibilityLabel(Text("Dette de sommeil : zéro."))
+            .accessibilityLabel(Text("Dette de sommeil : zéro." + nightStripSuffix))
         case let .cached(computedAt):
             FigureCard(
                 debt: entry.snapshot?.debt ?? .zero,
@@ -75,7 +75,7 @@ struct DeltaSleepWidgetEntryView: View {
                 family: family
             )
             .accessibilityElement(children: .combine)
-            .accessibilityLabel(Text("Donnée en cache, mesure ancienne."))
+            .accessibilityLabel(Text("Donnée en cache, mesure ancienne." + nightStripSuffix))
         case .noData:
             StateMessage(
                 title: "Autoriser l'accès au sommeil",
@@ -85,9 +85,7 @@ struct DeltaSleepWidgetEntryView: View {
         case let .insufficientHistory(measured, required):
             InsufficientHistoryContent(measured: measured, required: required)
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel(
-                    String(localized: "Historique insuffisant : \(measured) nuits sur \(required).")
-                )
+                .accessibilityLabel(insufficientHistoryLabel(measured: measured, required: required))
         case let .nightMissing(debt):
             FigureCard(
                 debt: debt,
@@ -98,8 +96,29 @@ struct DeltaSleepWidgetEntryView: View {
                 family: family
             )
             .accessibilityElement(children: .combine)
-            .accessibilityLabel(Text("Nuit manquante, dette inchangée."))
+            .accessibilityLabel(Text("Nuit manquante, dette inchangée." + nightStripSuffix))
         }
+    }
+
+    /// Audit finding #17: on `.systemMedium`, the night strip's
+    /// above/below/gap distribution used to be entirely invisible to
+    /// VoiceOver — every accessibility label described only the figure.
+    /// Appended (not a full re-read of `MainScreenView`'s richer
+    /// `nightStripAccessibilityLabel` — a widget label needs to stay
+    /// short) to whichever state's label wins above.
+    private var nightStripSuffix: String {
+        guard family == .systemMedium else { return "" }
+        let bars = entry.snapshot?.nightBars ?? []
+        let gaps = bars.filter(\.isGap).count
+        guard gaps > 0 else { return "" }
+        return gaps == 1
+            ? String(localized: " 1 nuit sans donnée.")
+            : String(localized: " \(gaps) nuits sans données.")
+    }
+
+    private func insufficientHistoryLabel(measured: Int, required: Int) -> String {
+        let nightsWord = measured == 1 ? "nuit" : "nuits"
+        return String(localized: "Historique insuffisant : \(measured) \(nightsWord) sur \(required).")
     }
 
     /// FR + EN strings (docs/IMPLEMENTATION_PLAN.md §5, P9, D9): two fixed
@@ -120,8 +139,20 @@ struct DeltaSleepWidgetEntryView: View {
 
     /// "7 h 40", matching the mockup's own `.stale` card copy ("Mesure de
     /// 7 h 40") — an elapsed duration, not a relative-time phrase.
+    ///
+    /// Audit finding #19: `DurationCopy.delta` has no upper bound. After
+    /// a long stretch without a successful refresh (permission revoked
+    /// + HealthKit errors silently swallowed upstream) this could render
+    /// as "Mesure de 2160 h 00" — unbounded text with no `.lineLimit` in
+    /// the widget's fixed, non-scrollable frame. Past a day, switch to a
+    /// day count instead of ever-growing hours.
     private static func age(computedAt: Date, now: Date) -> String {
-        DurationCopy.delta(SleepDuration(seconds: max(0, now.timeIntervalSince(computedAt))))
+        let elapsed = max(0, now.timeIntervalSince(computedAt))
+        let days = Int(elapsed / 86400)
+        guard days >= 1 else {
+            return DurationCopy.delta(SleepDuration(seconds: elapsed))
+        }
+        return days == 1 ? String(localized: "1 jour") : String(localized: "\(days) jours")
     }
 }
 
@@ -224,7 +255,10 @@ private struct InsufficientHistoryContent: View {
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.72))
             Spacer(minLength: 4)
-            Text("\(measured) nuits")
+            // Audit finding #11: same "1 nuits" mistake as the app's
+            // equivalent screen — measured == 1 is real, the day after
+            // install.
+            Text(measured == 1 ? "1 nuit" : "\(measured) nuits")
                 .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
             Text("sur \(required)")
