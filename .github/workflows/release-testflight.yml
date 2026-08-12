@@ -70,6 +70,15 @@ jobs:
       # Connect has seen — project.yml's static "1" only works for a
       # single upload. The GitHub Actions run number is monotonically
       # increasing per-workflow and good enough as a real build number.
+      #
+      # CODE_SIGN_IDENTITY="Apple Distribution" is required here, not just
+      # in ExportOptions.plist's signingCertificate key: for a team with no
+      # existing Apple Distribution certificate, -allowProvisioningUpdates
+      # only creates one when the ARCHIVE step itself demands it. Left
+      # implicit, Automatic signing archives with whatever's "good enough"
+      # (Apple Development), and the later export step can't retroactively
+      # upgrade it — Apple's server rejects the upload with "Invalid
+      # Signature" (code 90035) because it was never actually distribution-signed.
       - name: Archive
         run: |
           xcodebuild archive \
@@ -84,6 +93,7 @@ jobs:
             -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}"
 
       # `destination: upload` in ExportOptions.plist means this step
