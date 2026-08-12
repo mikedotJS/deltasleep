@@ -11,6 +11,7 @@ import UIKit
 /// here (P8); this screen assumes P8's onboarding already ran.
 struct MainScreenView: View {
     @State private var viewModel: MainScreenViewModel
+    let onboardingViewModel: OnboardingViewModel
 
     // Dynamic Type (docs/IMPLEMENTATION_PLAN.md §5, P9): every body-copy
     // size this screen owns directly (GlassKit's own text scales itself
@@ -23,8 +24,9 @@ struct MainScreenView: View {
     @ScaledMetric private var bigNumberSize: CGFloat = 24
     @ScaledMetric private var smallSize: CGFloat = 13
 
-    init(viewModel: MainScreenViewModel) {
+    init(viewModel: MainScreenViewModel, onboardingViewModel: OnboardingViewModel) {
         _viewModel = State(initialValue: viewModel)
+        self.onboardingViewModel = onboardingViewModel
     }
 
     var body: some View {
@@ -47,13 +49,16 @@ struct MainScreenView: View {
         .task {
             await viewModel.refresh()
         }
-        // Phase 1 of the post-audit plan (PLAN.md): the app's first
-        // navigable screen beyond the flat onboarding/main-screen
-        // toggle. No actions wired yet — that's Phase 2.
+        // Phase 1-2 of the post-audit plan (PLAN.md): the app's first
+        // navigable screen beyond the flat onboarding/main-screen toggle.
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink {
-                    SettingsView()
+                    SettingsView(
+                        viewModel: viewModel.makeSettingsViewModel(
+                            onboardingViewModel: onboardingViewModel
+                        )
+                    )
                 } label: {
                     Image(systemName: "gearshape")
                         .foregroundStyle(.white.opacity(0.8))

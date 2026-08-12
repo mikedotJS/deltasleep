@@ -120,6 +120,16 @@ final class MainScreenViewModel {
         snapshot = cachedSnapshot
     }
 
+    /// Builds `SettingsView`'s view model (post-audit PLAN.md Phase 2) —
+    /// keeps `store`/`needStore`/`orchestrator` `private` here rather than
+    /// exposing them app-wide just for this one screen to reach.
+    func makeSettingsViewModel(onboardingViewModel: OnboardingViewModel) -> SettingsViewModel {
+        SettingsViewModel(
+            store: store, needStore: needStore, orchestrator: orchestrator,
+            onboardingViewModel: onboardingViewModel
+        )
+    }
+
     #if DEBUG
     /// P10's debug state switcher (docs/IMPLEMENTATION_PLAN.md §5, P10):
     /// forces `fixture`'s data into the shared store, reloads widget

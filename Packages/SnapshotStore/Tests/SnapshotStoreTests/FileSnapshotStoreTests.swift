@@ -91,4 +91,23 @@ final class FileSnapshotStoreTests: XCTestCase {
         XCTAssertNotNil(store.readSnapshot())
         XCTAssertEqual(store.readHistoryAvailability(), .sufficient)
     }
+
+    /// "Effacer mes données" (post-audit PLAN.md Phase 2): both files
+    /// must actually be gone, not just marked unavailable — real erasure,
+    /// not a state flag.
+    func testClearRemovesBothSnapshotAndHistoryAvailability() throws {
+        let store = FileSnapshotStore(directory: tempDirectory)
+        try store.writeSnapshot(makeSnapshot(debtHours: 2))
+        try store.writeHistoryAvailability(.sufficient)
+
+        try store.clear()
+
+        XCTAssertNil(store.readSnapshot())
+        XCTAssertNil(store.readHistoryAvailability())
+    }
+
+    func testClearOnAnEmptyStoreDoesNotThrow() {
+        let store = FileSnapshotStore(directory: tempDirectory)
+        XCTAssertNoThrow(try store.clear())
+    }
 }

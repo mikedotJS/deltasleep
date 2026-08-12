@@ -14,4 +14,12 @@ public protocol SnapshotStoring: Sendable {
     func writeSnapshot(_ snapshot: DebtSnapshot) throws
     func readHistoryAvailability() -> HistoryAvailability?
     func writeHistoryAvailability(_ availability: HistoryAvailability) throws
+
+    /// Removes both the snapshot and history-availability data. Distinct
+    /// from `writeHistoryAvailability(.none)`: that alone would still
+    /// classify as `.noData` (`WidgetState.classify`'s `.none` branch
+    /// ignores the snapshot entirely), but leaves whatever sleep-derived
+    /// data was in the snapshot file sitting on disk — not actual erasure
+    /// for the "Effacer mes données" action (post-audit PLAN.md Phase 2).
+    func clear() throws
 }

@@ -18,13 +18,13 @@ Vérif: `xcodebuild build -project DeltaSleep.xcodeproj -scheme DeltaSleep -dest
 - [x] icône d'accès (engrenage) dans le header de `MainScreenView`
 - [x] `SettingsView` avec 3 lignes placeholder (Revoir l'explication / Historique / Effacer mes données) sans action
 
-## Phase 2 — Actions Réglages : revoir onboarding + effacer les données [ ]
+## Phase 2 — Actions Réglages : revoir onboarding + effacer les données [x]
 Objectif: les 2 actions simples fonctionnent de bout en bout (le trou "historique" est traité en phase 3-4, plus gros)
 Vérif: manuel — "Revoir l'explication" repasse à l'onboarding ; "Effacer mes données" (avec confirmation) vide le cache et l'app revient à `.noData`
-- [ ] `OnboardingViewModel`/`RootView` : action pour remettre `didCompleteOnboarding` à `false`
-- [ ] fonction de reset centralisée (vide `SnapshotStore` + `SleepNeedStore` + le flag d'autorisation HealthKit demandée) — testable indépendamment de l'UI
-- [ ] `Alert` de confirmation avant "Effacer mes données" (action destructive)
-- [ ] tests unitaires sur la fonction de reset (package concerné)
+- [x] `OnboardingViewModel`/`RootView` : action pour remettre `didCompleteOnboarding` à `false`
+- [x] fonction de reset centralisée (vide `SnapshotStore` + `SleepNeedStore` + le flag d'autorisation HealthKit demandée) — testable indépendamment de l'UI
+- [x] `Alert` de confirmation avant "Effacer mes données" (action destructive)
+- [x] tests unitaires sur la fonction de reset (package concerné)
 
 ## Phase 3 — Historique étendu : données [ ]
 Objectif: capacité de lire un historique au-delà de la fenêtre de calcul de 14 nuits, testée indépendamment de toute UI

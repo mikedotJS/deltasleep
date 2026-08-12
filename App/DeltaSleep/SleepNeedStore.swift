@@ -46,4 +46,11 @@ final class SleepNeedStore: @unchecked Sendable {
         }
         return changed
     }
+
+    /// "Effacer mes données" (post-audit PLAN.md Phase 2): back to the
+    /// unset state — `current` falls back to the 8h00 default again.
+    func reset() {
+        userDefaults.removeObject(forKey: Self.key)
+        userDefaults.removeObject(forKey: Self.changedDateKey)
+    }
 }

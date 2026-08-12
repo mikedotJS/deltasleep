@@ -1,27 +1,60 @@
 import SwiftUI
 
-/// Phase 1 of the post-audit plan (PLAN.md): squelette only, no actions
-/// wired — closes the three capability gaps `BUSINESS_RULES.md` confirmed
-/// as real trous (revoir l'onboarding, historique > 14 nuits, effacer mes
-/// données), one per row, over Phase 2 (onboarding + effacer) and Phase 4
-/// (historique).
+/// Phase 2 of the post-audit plan (PLAN.md): "Revoir l'explication" and
+/// "Effacer mes données" are fully wired; "Historique" stays a placeholder
+/// until Phase 4 builds the screen it links to.
 struct SettingsView: View {
+    let viewModel: SettingsViewModel
+    @State private var showEraseConfirmation = false
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         List {
             Section {
-                Label("Revoir l'explication", systemImage: "arrow.counterclockwise")
+                Button {
+                    viewModel.reviewOnboarding()
+                } label: {
+                    Label("Revoir l'explication", systemImage: "arrow.counterclockwise")
+                }
+
                 Label("Historique", systemImage: "clock.arrow.circlepath")
-                Label("Effacer mes données", systemImage: "trash")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                // Error Prevention (audit's own design-principles pass):
+                // destructive action gets a confirmation step, not an
+                // immediate irreversible tap.
+                Button(role: .destructive) {
+                    showEraseConfirmation = true
+                } label: {
+                    if viewModel.isErasing {
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                            Spacer()
+                        }
+                    } else {
+                        Label("Effacer mes données", systemImage: "trash")
+                    }
+                }
+                .disabled(viewModel.isErasing)
             }
         }
         .navigationTitle("Réglages")
         .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-#Preview {
-    NavigationStack {
-        SettingsView()
+        .alert("Effacer toutes les données ?", isPresented: $showEraseConfirmation) {
+            Button("Annuler", role: .cancel) {}
+            Button("Effacer", role: .destructive) {
+                Task { await viewModel.eraseAllData() }
+            }
+        } message: {
+            Text(
+                """
+                Ta dette de sommeil, ton besoin réglé et l'accès à Santé seront réinitialisés. \
+                Cette action est irréversible.
+                """
+            )
+        }
     }
 }

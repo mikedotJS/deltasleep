@@ -38,6 +38,16 @@ public final class FileSnapshotStore: SnapshotStoring, @unchecked Sendable {
         try write(data, to: historyAvailabilityURL)
     }
 
+    public func clear() throws {
+        try removeIfExists(snapshotURL)
+        try removeIfExists(historyAvailabilityURL)
+    }
+
+    private func removeIfExists(_ url: URL) throws {
+        guard fileManager.fileExists(atPath: url.path) else { return }
+        try fileManager.removeItem(at: url)
+    }
+
     private func write(_ data: Data, to url: URL) throws {
         try fileManager.createDirectory(
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true

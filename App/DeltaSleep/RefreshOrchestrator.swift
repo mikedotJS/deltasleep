@@ -123,6 +123,15 @@ actor RefreshOrchestrator {
         userDefaults.set(true, forKey: Self.didRequestAuthorizationKey)
     }
 
+    /// "Effacer mes données" (post-audit PLAN.md Phase 2): clears the
+    /// "did we ever ask" flag so a subsequent onboarding replay behaves
+    /// like a genuine first run — without this, `requestAuthorizationIfNeeded`
+    /// would silently skip the actual system prompt on replay, since it
+    /// only ever fires once per install by design.
+    func resetAuthorizationRequestFlag() {
+        userDefaults.removeObject(forKey: Self.didRequestAuthorizationKey)
+    }
+
     /// The full denial-ambiguity heuristic (P2's `HealthAuthorizationState`)
     /// — combines the app's own "did we ask" flag with two live HealthKit
     /// checks. Used by P8 to tell "never asked yet" apart from "asked, and

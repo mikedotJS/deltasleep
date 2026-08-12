@@ -16,7 +16,9 @@ struct RootView: View {
                 // (Phase 1 of the post-audit plan) is the first screen
                 // that isn't a flat top-level toggle in RootView itself.
                 NavigationStack {
-                    MainScreenView(viewModel: mainScreenViewModel)
+                    MainScreenView(
+                        viewModel: mainScreenViewModel, onboardingViewModel: onboardingViewModel
+                    )
                 }
             } else {
                 OnboardingView(viewModel: onboardingViewModel)

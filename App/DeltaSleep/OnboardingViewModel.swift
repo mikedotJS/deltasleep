@@ -34,4 +34,14 @@ final class OnboardingViewModel {
         hasCompletedOnboarding = true
         isRequesting = false
     }
+
+    /// "Revoir l'explication" (post-audit PLAN.md Phase 2, closes one of
+    /// the 3 confirmed capability gaps in BUSINESS_RULES.md — there was
+    /// previously no way back to this screen once completed). Flips the
+    /// flag `RootView` switches on; it re-renders `OnboardingView` on its
+    /// own the moment this changes.
+    func resetOnboarding() {
+        userDefaults.set(false, forKey: Self.didCompleteOnboardingKey)
+        hasCompletedOnboarding = false
+    }
 }

@@ -62,6 +62,11 @@ final class RefreshCoordinatorTests: XCTestCase {
         func writeHistoryAvailability(_ availability: HistoryAvailability) throws {
             historyAvailability = availability
         }
+
+        func clear() throws {
+            snapshot = nil
+            historyAvailability = nil
+        }
     }
 
     /// Same as `InMemorySnapshotStore` but also records the order writes
@@ -88,6 +93,12 @@ final class RefreshCoordinatorTests: XCTestCase {
         func writeHistoryAvailability(_ availability: HistoryAvailability) throws {
             historyAvailability = availability
             writeOrder.append("availability")
+        }
+
+        func clear() throws {
+            snapshot = nil
+            historyAvailability = nil
+            writeOrder.append("clear")
         }
     }
 
