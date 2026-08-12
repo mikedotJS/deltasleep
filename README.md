@@ -84,3 +84,12 @@ a structural approximation, not a pixel-matched port.
 Every phase's GitHub issue (#3–#13) has a "Status" section describing what was built
 and, honestly, what's still a known gap — read those before assuming a phase is fully
 done rather than "CI-verified as far as CI can verify."
+
+## Shipping to TestFlight
+
+[`docs/RELEASE.md`](docs/RELEASE.md) — a `workflow_dispatch` GitHub Actions pipeline
+(`.github/workflows/release-testflight.yml`) archives, signs, and uploads straight to
+App Store Connect. It's built and ready; it just needs the Apple Developer Program
+account owner to do the one-time portal setup and add five repository secrets before
+the first run — that part can't be automated from here, see the doc for exactly what
+and why.
