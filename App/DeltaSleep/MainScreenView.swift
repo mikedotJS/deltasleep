@@ -37,17 +37,39 @@ struct MainScreenView: View {
 
     var body: some View {
         ScrollView {
-            GlassSurface(
-                tint: AppTint.tint(for: viewModel.state),
-                environment: .app,
-                cornerRadius: GlassTokens.cornerRadiusPhone
-            )
-            .overlay {
-                content
-                    .padding(.horizontal, GlassTokens.phonePaddingHorizontal)
-                    .padding(.vertical, GlassTokens.phonePaddingVertical)
-            }
-            .padding(24)
+            // The content sizes the card, not the other way round.
+            // `GlassSurface` has no intrinsic size — every layer it draws is
+            // infinitely flexible — so as the *base* of the composition, with
+            // all the content in a (layout-neutral) `.overlay`, it had no
+            // height to adopt: a vertical `ScrollView` proposes an
+            // unspecified height, the surface collapsed to SwiftUI's ~10pt
+            // default, and the 44pt corner radius clipped into that strip
+            // rendered as a thin bar drawn across the content, which itself
+            // spilled outside the surface's bounds. As a `.background` the
+            // surface is proposed the content's already-resolved size
+            // instead, so the card wraps its content in every state and at
+            // every Dynamic Type size.
+            //
+            // Padding order is load-bearing: the card's inner padding sits
+            // *inside* the background so the surface covers it, the 24pt
+            // screen margin *outside* so it stays a gap between card and
+            // screen edge. `maxWidth: .infinity` keeps the card's width
+            // constant across states — `header`/`statRow` contain a
+            // `Spacer()` but the `.insufficientHistory`/`.noData` branches
+            // don't, so without it the card would shrink-wrap the widest
+            // text and change width per state.
+            content
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, GlassTokens.phonePaddingHorizontal)
+                .padding(.vertical, GlassTokens.phonePaddingVertical)
+                .background {
+                    GlassSurface(
+                        tint: AppTint.tint(for: viewModel.state),
+                        environment: .app,
+                        cornerRadius: GlassTokens.cornerRadiusPhone
+                    )
+                }
+                .padding(24)
         }
         .refreshable {
             await viewModel.refresh()
@@ -55,6 +77,19 @@ struct MainScreenView: View {
         .task {
             await viewModel.refresh()
         }
+        // The card carries its own header row ("DETTE DE SOMMEIL" /
+        // "14 NUITS"), so the bar deliberately shows no title text — but it
+        // must still exist. Without a `navigationTitle`, `NavigationStack`
+        // reserves no bar height at all and the toolbar's gear renders on top
+        // of the card, in the exact corner "14 NUITS" occupies. `.inline`
+        // reserves the 44pt strip rather than the large title's 96pt.
+        //
+        // Deliberately *not* adding `.toolbarBackground(.hidden, …)`: audit
+        // finding #23 records that this top-trailing corner is the bloom
+        // gradient's most saturated region, and the bar's material is what
+        // keeps the white gear legible once the bright card scrolls under it.
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
         // Phase 1-2 of the post-audit plan (PLAN.md): the app's first
         // navigable screen beyond the flat onboarding/main-screen toggle.
         .toolbar {
@@ -69,6 +104,8 @@ struct MainScreenView: View {
                     Image(systemName: "gearshape")
                         .foregroundStyle(.white.opacity(0.8))
                 }
+                // Without this VoiceOver reads the SF Symbol's own name.
+                .accessibilityLabel("Réglages")
             }
         }
     }

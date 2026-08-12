@@ -16,6 +16,12 @@ struct DeltaSleepWidgetEntryView: View {
     let entry: SnapshotEntry
 
     var body: some View {
+        // Surface as the base with content in an `.overlay` is correct *here*,
+        // unlike on the phone screen (see `MainScreenView.body`, which had to
+        // invert this): WidgetKit proposes a concrete family-sized rect, and
+        // the card is meant to fill the whole widget. Flipping this to
+        // `.background` would make the card shrink-wrap its content and leave
+        // the widget's corners bare.
         GlassSurface(
             tint: WidgetTint.tint(for: entry.state),
             environment: .widget,

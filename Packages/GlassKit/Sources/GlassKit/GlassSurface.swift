@@ -13,6 +13,23 @@ import SwiftUI
 /// without a device — this is a structural approximation, not a
 /// pixel-matched port. A real device pass is still owed before release
 /// (see issue #1's status note).
+///
+/// ## Sizing — this view has none
+/// Every layer drawn here (both `LinearGradient`s, the `GeometryReader`
+/// bloom, the `Canvas` grain) is infinitely flexible, so the surface is
+/// exactly as large as whatever its parent proposes and never one point
+/// more. That's deliberate — a widget wants it to fill the whole family
+/// rect — but it means the surface must never be the *base* of a
+/// composition whose height is unconstrained: a vertical `ScrollView`
+/// proposes an unspecified height, which resolves to SwiftUI's ~10pt
+/// default and collapses the card into a thin bar behind its own content.
+/// Size it one of two ways:
+///  - **fixed rect**, when the parent already has one — WidgetKit's family
+///    size, or an explicit `.frame(width:height:)` in a preview;
+///  - **content-driven**, when the content decides how tall the card is —
+///    put the content first and this surface in its `.background { }`,
+///    never the reverse via `.overlay` (see `MainScreenView.body`, which
+///    shipped that exact bug).
 public struct GlassSurface: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorSchemeContrast) private var contrast
