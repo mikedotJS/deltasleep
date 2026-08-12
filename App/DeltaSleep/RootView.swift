@@ -10,10 +10,21 @@ struct RootView: View {
     let mainScreenViewModel: MainScreenViewModel
 
     var body: some View {
-        if onboardingViewModel.hasCompletedOnboarding {
-            MainScreenView(viewModel: mainScreenViewModel)
-        } else {
-            OnboardingView(viewModel: onboardingViewModel)
+        Group {
+            if onboardingViewModel.hasCompletedOnboarding {
+                MainScreenView(viewModel: mainScreenViewModel)
+            } else {
+                OnboardingView(viewModel: onboardingViewModel)
+            }
         }
+        // Every GlassKit surface (translucent white gradients, a
+        // white-opacity text ladder) is designed against a near-black
+        // backdrop — OnboardingView already forces one locally
+        // (Color.black.ignoresSafeArea()), but MainScreenView never did.
+        // In system Light Mode the glass UI rendered on a light
+        // background instead, reading as almost blank (audit finding
+        // #3). Forcing dark here covers both screens from the one place
+        // that actually roots the app.
+        .preferredColorScheme(.dark)
     }
 }

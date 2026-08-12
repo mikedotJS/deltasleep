@@ -30,6 +30,18 @@ actor RefreshOrchestrator {
     /// can chain onto it — see `refreshNow`.
     private var lastRefresh: Task<Void, Never>?
 
+    /// Audit finding #16: keeps the app self-refreshing at the boundary
+    /// that actually matters ("cette nuit"/"depuis lundi" pivot on noon,
+    /// not midnight — see `SleepNightAggregator`'s D3 rule), not just on
+    /// scene activation/launch/pull-to-refresh/background observer.
+    private var noonRefreshTask: Task<Void, Never>?
+
+    /// Audit finding #14: whether the most recent `performRefresh` threw.
+    /// `MainScreenViewModel` surfaces this as a lightweight banner —
+    /// distinct from "succeeded with nothing new" — instead of a silent
+    /// no-op the user can't tell apart from a real failure.
+    private(set) var lastRefreshFailed = false
+
     init(
         store: SnapshotStoring,
         needStore: SleepNeedStore = SleepNeedStore(),
@@ -59,7 +71,35 @@ actor RefreshOrchestrator {
                 box.call()
             }
         }
+        scheduleNoonBoundaryRefresh()
         await refreshNow()
+    }
+
+    /// Audit finding #16: self-reschedules a refresh at every local noon
+    /// — the boundary "cette nuit"/"depuis lundi" actually pivot on
+    /// (`SleepNightAggregator`'s D3 noon-to-noon window), not midnight.
+    /// Without this, an app kept in the foreground across noon showed
+    /// stale labels until the next scene activation or manual
+    /// pull-to-refresh.
+    private func scheduleNoonBoundaryRefresh() {
+        noonRefreshTask?.cancel()
+        noonRefreshTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, let next = await self.nextNoon(after: Date()) else { return }
+                let interval = max(next.timeIntervalSinceNow, 1)
+                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                guard !Task.isCancelled else { return }
+                await self.refreshNow()
+            }
+        }
+    }
+
+    private func nextNoon(after date: Date) -> Date? {
+        let startOfToday = calendar.startOfDay(for: date)
+        guard let noonToday = calendar.date(byAdding: .hour, value: 12, to: startOfToday) else {
+            return nil
+        }
+        return noonToday > date ? noonToday : calendar.date(byAdding: .day, value: 1, to: noonToday)
     }
 
     /// Requests HealthKit authorization the first time only — called
@@ -136,16 +176,35 @@ actor RefreshOrchestrator {
 
     private func performRefresh(needChangedToday: Bool) async {
         let now = Date()
-        _ = try? await RefreshCoordinator.refresh(
-            need: needStore.current,
-            needChangedToday: needChangedToday,
-            referenceDate: now,
-            now: now,
-            calendar: calendar,
-            source: source,
-            store: store,
-            reloader: reloader
-        )
+        // Audit finding #8: `needChangedToday` used to be a one-shot flag
+        // only the refresh immediately following a sleep-need edit ever
+        // saw true — every later refresh that same day (background
+        // observer, scene activation) passed `false` again, so `Trend`
+        // could un-freeze and paint green/red within minutes of a
+        // settings change, despite the intent (documented above, and in
+        // SleepDebtEngine) being to freeze it for the rest of the day.
+        // Deriving it from the persisted last-changed date instead makes
+        // every refresh that day agree, not just the first one.
+        let changedToday = needChangedToday
+            || needStore.lastChangedDate.map { calendar.isDate($0, inSameDayAs: now) } ?? false
+        do {
+            _ = try await RefreshCoordinator.refresh(
+                need: needStore.current,
+                needChangedToday: changedToday,
+                referenceDate: now,
+                now: now,
+                calendar: calendar,
+                source: source,
+                store: store,
+                reloader: reloader
+            )
+            lastRefreshFailed = false
+        } catch {
+            // Audit finding #14: previously `try?` discarded this
+            // entirely — a real HealthKit/disk error and "nothing new"
+            // were indistinguishable to the user.
+            lastRefreshFailed = true
+        }
     }
 }
 

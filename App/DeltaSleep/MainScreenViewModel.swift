@@ -14,6 +14,10 @@ final class MainScreenViewModel {
     private(set) var state: WidgetState = .noData
     private(set) var snapshot: DebtSnapshot?
     private(set) var isRefreshing = false
+    /// Audit finding #14: whether the most recent refresh attempt threw
+    /// (as opposed to succeeding with no new data). Cleared on the next
+    /// successful refresh.
+    private(set) var lastRefreshFailed = false
     /// Only meaningful (non-nil) while `state == .noData` — resolved via
     /// P2's `HealthAuthorizationState` heuristic so `MainScreenView` can
     /// offer the right recovery action instead of always assuming
@@ -24,6 +28,9 @@ final class MainScreenViewModel {
     private let store: SnapshotStoring
     private let needStore: SleepNeedStore
     private let orchestrator: RefreshOrchestrator
+    /// Audit finding #12: coalesces the stepper's auto-repeat into one
+    /// refresh instead of one per tick — see `updateSleepNeed`.
+    private var pendingNeedUpdate: Task<Void, Never>?
 
     init(store: SnapshotStoring, needStore: SleepNeedStore, orchestrator: RefreshOrchestrator) {
         self.store = store
@@ -37,20 +44,37 @@ final class MainScreenViewModel {
     func refresh() async {
         isRefreshing = true
         await orchestrator.refreshNow()
+        lastRefreshFailed = await orchestrator.lastRefreshFailed
         reloadFromCache(now: Date())
         await refreshAuthStateIfNeeded()
         isRefreshing = false
     }
 
-    /// Called when the sleep-need stepper changes — persists the new
-    /// value, then re-refreshes with `needChangedToday: true` so `Trend`
-    /// freezes for today rather than the settings change alone painting
-    /// the figure a colour (P1's freeze-on-need-change rule).
-    func updateSleepNeed(hours: Double) async {
+    /// Called on every sleep-need stepper tick. Updates the displayed
+    /// value immediately, but debounces the actual refresh (audit
+    /// finding #12) — a held stepper's native auto-repeat used to fire a
+    /// full HealthKit fetch + recompute + disk write + widget reload
+    /// cycle per tick, never cancelled even when a newer value arrived
+    /// right behind it.
+    func updateSleepNeed(hours: Double) {
         sleepNeedHours = hours
+        pendingNeedUpdate?.cancel()
+        pendingNeedUpdate = Task {
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            guard !Task.isCancelled else { return }
+            await commitSleepNeedUpdate(hours: hours)
+        }
+    }
+
+    /// Persists the new value, then re-refreshes with
+    /// `needChangedToday: true` so `Trend` freezes for today rather than
+    /// the settings change alone painting the figure a colour (P1's
+    /// freeze-on-need-change rule).
+    private func commitSleepNeedUpdate(hours: Double) async {
         let changed = needStore.set(SleepNeed(.hours(hours)))
         isRefreshing = true
         await orchestrator.refreshNow(needChangedToday: changed)
+        lastRefreshFailed = await orchestrator.lastRefreshFailed
         reloadFromCache(now: Date())
         await refreshAuthStateIfNeeded()
         isRefreshing = false
@@ -61,7 +85,14 @@ final class MainScreenViewModel {
     /// `authState` says that can actually do something
     /// (`.needsPrompt`), then refreshes so a grant takes effect
     /// immediately rather than waiting for the next scene activation.
+    ///
+    /// Sets `isRefreshing` immediately (audit finding #13), before the
+    /// system-prompt call even starts — `refresh()` below would only set
+    /// it after `requestAuthorizationAgain()` already returned, leaving a
+    /// window where a repeat tap could fire a second overlapping system
+    /// prompt.
     func requestAccessAgain() async {
+        isRefreshing = true
         await orchestrator.requestAuthorizationAgain()
         await refresh()
     }
@@ -99,7 +130,7 @@ final class MainScreenViewModel {
     /// it lives in the same file, kept here rather than in
     /// `DebugStateFixture.swift` for exactly that reason.
     func applyDebugFixture(_ fixture: DebugStateFixture) {
-        try? fixture.apply(store: store, reloader: WidgetCenterReloader())
+        try? fixture.apply(store: store, reloader: WidgetCenterReloader(), need: needStore.current)
         reloadFromCache(now: Date())
     }
     #endif

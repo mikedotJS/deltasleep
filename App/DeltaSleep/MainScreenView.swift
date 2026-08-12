@@ -52,6 +52,17 @@ struct MainScreenView: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
+            // Audit finding #14: refresh failures were entirely silent —
+            // a real HealthKit error and "nothing new since last time"
+            // were indistinguishable to the user. This doesn't try to
+            // explain *why* (the underlying error still isn't surfaced
+            // in detail), just that the last attempt didn't succeed.
+            if viewModel.lastRefreshFailed {
+                Text("Dernier rafraîchissement échoué")
+                    .font(.system(size: captionSize, weight: .medium))
+                    .foregroundStyle(.orange)
+                    .padding(.top, 8)
+            }
             stateBody
                 .padding(.top, 20)
             if let snapshot = viewModel.snapshot {
@@ -135,12 +146,22 @@ struct MainScreenView: View {
             noDataBody
         case let .insufficientHistory(measured, required):
             VStack(alignment: .leading, spacing: 8) {
-                Text("\(measured) nuits sur \(required)")
+                // Audit finding #11: "1 nuits" is a real French plural
+                // mistake, not a hypothetical — measured == 1 happens the
+                // day after install.
+                Text(measured == 1 ? "1 nuit sur \(required)" : "\(measured) nuits sur \(required)")
                     .font(.system(size: bigNumberSize, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                 Text("Lecture à partir de \(required)")
                     .font(.system(size: smallSize, weight: .medium))
                     .foregroundStyle(.white.opacity(0.7))
+                // Audit finding #18: the only one of the 7 states with no
+                // actionable copy at all — this explains there's nothing
+                // to do but keep the phone/Watch tracking sleep as usual.
+                Text("Continue de porter ta montre ou de dormir avec ton iPhone à proximité — la lecture s'activera automatiquement.")
+                    .font(.system(size: captionSize, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .padding(.top, 4)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(
@@ -165,9 +186,10 @@ struct MainScreenView: View {
     /// (unlike a plain `String`, which VoiceOver would speak in French
     /// regardless of the device's language).
     private func insufficientHistoryAccessibilityLabel(measured: Int, required: Int) -> String {
-        String(
+        let nightsWord = measured == 1 ? "nuit" : "nuits"
+        return String(
             localized: """
-            Historique insuffisant : \(measured) nuits sur \(required). \
+            Historique insuffisant : \(measured) \(nightsWord) sur \(required). \
             Lecture à partir de \(required) nuits.
             """
         )
@@ -206,22 +228,35 @@ struct MainScreenView: View {
         .overlay(alignment: .top) {
             Rectangle().fill(Color.white.opacity(0.16)).frame(height: 1)
         }
+        // Audit finding #20: every other block on this screen groups
+        // into one VoiceOver stop; statRow didn't, doubling the swipes
+        // needed to get through the four stat rows.
+        .accessibilityElement(children: .combine)
     }
 
     private var needStepper: some View {
         Stepper(
             value: Binding(
                 get: { viewModel.sleepNeedHours },
-                set: { newValue in
-                    Task { await viewModel.updateSleepNeed(hours: newValue) }
-                }
+                // Audit finding #12: updateSleepNeed itself debounces the
+                // actual HealthKit refresh (see MainScreenViewModel) — a
+                // held stepper's auto-repeat no longer fires a full
+                // refresh cycle per tick.
+                set: { newValue in viewModel.updateSleepNeed(hours: newValue) }
             ),
             in: 4 ... 12,
             step: 0.25
         ) {
-            Text("Besoin : \(DurationCopy.delta(.hours(viewModel.sleepNeedHours)))")
-                .font(.system(size: captionSize, weight: .medium))
-                .foregroundStyle(.white.opacity(0.74))
+            HStack {
+                Text("Besoin : \(DurationCopy.delta(.hours(viewModel.sleepNeedHours)))")
+                    .font(.system(size: captionSize, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.74))
+                if viewModel.isRefreshing {
+                    ProgressView()
+                        .tint(.white)
+                        .scaleEffect(0.7)
+                }
+            }
         }
         .tint(.white)
     }
@@ -250,16 +285,39 @@ struct MainScreenView: View {
                 subtitle: noDataSubtitle
             )
             .accessibilityElement(children: .combine)
+            // Audit findings #5/#13: this is the *only* recovery path out
+            // of .noData, and it used to be plain text with no button
+            // chrome, no loading feedback, and no protection against a
+            // repeat tap firing overlapping requests. Matches
+            // OnboardingView's CTA treatment now.
             if viewModel.authState == .needsPrompt {
-                Button("Autoriser l'accès") {
+                Button {
                     Task { await viewModel.requestAccessAgain() }
+                } label: {
+                    HStack {
+                        if viewModel.isRefreshing {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text("Autoriser l'accès")
+                                .font(.system(size: smallSize, weight: .semibold))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
                 }
-                .font(.system(size: smallSize, weight: .semibold))
-                .foregroundStyle(.white)
+                .buttonStyle(.borderedProminent)
+                .tint(RGBA(r255: 15, g255: 191, b255: 122).color)
+                .disabled(viewModel.isRefreshing)
             } else {
-                Button("Ouvrir les réglages", action: openSettings)
-                    .font(.system(size: smallSize, weight: .semibold))
-                    .foregroundStyle(.white)
+                Button(action: openSettings) {
+                    Text("Ouvrir les réglages")
+                        .font(.system(size: smallSize, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(RGBA(r255: 15, g255: 191, b255: 122).color)
+                .disabled(viewModel.isRefreshing)
             }
         }
     }
@@ -351,6 +409,33 @@ private struct PhoneFigureSection: View {
                 localized: """
                 Dette de sommeil : \(hours) heures \(minutes) minutes, en baisse \
                 depuis hier, écart de \(yesterday). Écart de \(monday) depuis lundi.
+                """
+            )
+        }
+        // Audit finding #4: `deltaSinceMonday` is routinely nil (fewer
+        // than 2 nights measured since Monday — the common case on
+        // Monday/Tuesday) while `deltaSinceYesterday` is available.
+        // Without these branches VoiceOver fell all the way through to
+        // the generic sentence below even though the visual delta chip
+        // was showing — the spoken and visible content diverged.
+        if let deltaSinceYesterday {
+            let seconds = abs(deltaSinceYesterday.seconds)
+            let yesterday = DurationCopy.delta(SleepDuration(seconds: seconds))
+            let direction = deltaSinceYesterday.seconds >= 0 ? "en hausse" : "en baisse"
+            return String(
+                localized: """
+                Dette de sommeil : \(hours) heures \(minutes) minutes, \(direction) \
+                depuis hier, écart de \(yesterday).
+                """
+            )
+        }
+        if let deltaSinceMonday {
+            let monday = DurationCopy.delta(SleepDuration(seconds: abs(deltaSinceMonday.seconds)))
+            let direction = deltaSinceMonday.seconds >= 0 ? "en hausse" : "en baisse"
+            return String(
+                localized: """
+                Dette de sommeil : \(hours) heures \(minutes) minutes, \(direction) \
+                depuis lundi, écart de \(monday).
                 """
             )
         }

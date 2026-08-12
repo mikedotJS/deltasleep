@@ -27,9 +27,17 @@ enum DebugStateFixture: String, CaseIterable, Identifiable {
     /// two effects a real refresh has, so both the app (on its next
     /// `refresh()`) and the widget pick it up exactly the way they'd
     /// pick up genuine data.
-    func apply(store: SnapshotStoring, reloader: WidgetReloading, now: Date = Date()) throws {
+    ///
+    /// `need` is the tester's *actually configured* sleep need (audit
+    /// finding #93) — every fixture used to hard-code 8h00 regardless,
+    /// so the "Besoin réglé" stat row and the Stepper right below it
+    /// could disagree during a debug session, a mismatch that never
+    /// happens with real data.
+    func apply(
+        store: SnapshotStoring, reloader: WidgetReloading, need: SleepNeed, now: Date = Date()
+    ) throws {
         try store.writeHistoryAvailability(historyAvailability)
-        if let snapshot = makeSnapshot(now: now) {
+        if let snapshot = makeSnapshot(now: now, need: need) {
             try store.writeSnapshot(snapshot)
         }
         reloader.reloadAllTimelines()
@@ -43,8 +51,6 @@ enum DebugStateFixture: String, CaseIterable, Identifiable {
         }
     }
 
-    private static let need = SleepNeed(.hm(8, 0))
-
     private static func bars(surplus: Bool) -> [NightStripMapping.Bar] {
         (0 ..< 14).map { index in
             NightStripMapping.Bar(
@@ -53,38 +59,38 @@ enum DebugStateFixture: String, CaseIterable, Identifiable {
         }
     }
 
-    private func makeSnapshot(now: Date) -> DebtSnapshot? {
+    private func makeSnapshot(now: Date, need: SleepNeed) -> DebtSnapshot? {
         switch self {
         case .noData, .insufficientHistory:
             nil
         case .nominalFalling:
             Self.snapshot(
-                now: now, debt: .hm(6, 30), trend: .falling,
+                now: now, need: need, debt: .hm(6, 30), trend: .falling,
                 deltaSinceYesterday: .hm(-1, 0), deltaSinceMonday: .hm(-2, 15),
                 lastNightIsGap: false, lastNightSleepDuration: .hm(8, 40), surplus: true
             )
         case .nominalRising:
             Self.snapshot(
-                now: now, debt: .hm(13, 4), trend: .rising,
+                now: now, need: need, debt: .hm(13, 4), trend: .rising,
                 deltaSinceYesterday: .hm(1, 10), deltaSinceMonday: .hm(2, 30),
                 lastNightIsGap: false, lastNightSleepDuration: .hm(6, 12), surplus: false
             )
         case .zero:
             Self.snapshot(
-                now: now, debt: .zero, trend: .falling,
+                now: now, need: need, debt: .zero, trend: .falling,
                 deltaSinceYesterday: .hm(0, 30), deltaSinceMonday: .hm(1, 0),
                 lastNightIsGap: false, lastNightSleepDuration: .hm(8, 20), surplus: true
             )
         case .cached:
             Self.snapshot(
-                now: now.addingTimeInterval(-StalenessPolicy.staleAfter - 3600),
+                now: now.addingTimeInterval(-StalenessPolicy.staleAfter - 3600), need: need,
                 debt: .hm(9, 15), trend: .rising,
                 deltaSinceYesterday: .hm(0, 45), deltaSinceMonday: .hm(1, 20),
                 lastNightIsGap: false, lastNightSleepDuration: .hm(7, 10), surplus: false
             )
         case .nightMissing:
             Self.snapshot(
-                now: now, debt: .hm(9, 40), trend: .unknown,
+                now: now, need: need, debt: .hm(9, 40), trend: .unknown,
                 deltaSinceYesterday: nil, deltaSinceMonday: nil,
                 lastNightIsGap: true, lastNightSleepDuration: nil, surplus: false
             )
@@ -93,6 +99,7 @@ enum DebugStateFixture: String, CaseIterable, Identifiable {
 
     private static func snapshot(
         now: Date,
+        need: SleepNeed,
         debt: SleepDuration,
         trend: Trend,
         deltaSinceYesterday: SleepDuration?,
@@ -106,7 +113,10 @@ enum DebugStateFixture: String, CaseIterable, Identifiable {
             need: need,
             debt: debt,
             trend: trend,
-            breakEvenTarget: .hm(8, 0),
+            // Was hard-coded to .hm(8, 0) independently of `need` — a
+            // second figure that could disagree with the tester's real
+            // setting, on top of the one `need` itself used to be.
+            breakEvenTarget: need.duration,
             deltaSinceYesterday: deltaSinceYesterday,
             deltaSinceMonday: deltaSinceMonday,
             fourteenNightAverage: .hm(7, 15),
