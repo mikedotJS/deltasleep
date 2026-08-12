@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Coexists with GENERATE_INFOPLIST_FILE=YES (project.yml) rather than
+	  replacing it: Xcode merges this file's keys with the build-setting-
+	  derived ones (INFOPLIST_KEY_*) instead of requiring one or the
+	  other. CFBundleURLTypes is an array of dicts, not expressible as a
+	  scalar INFOPLIST_KEY_* setting — same reason the widget target
+	  needs its own real Info.plist (see Widget/DeltaSleepWidget/Info.plist
+	  and project.yml's comment on that target).
+
+	  Registers the `deltasleep://` scheme the widget already links to
+	  (WidgetContent.swift's `.widgetURL`) — without this, iOS has no app
+	  to route that link to and a tap on the widget does nothing
+	  (audit finding #2).
+	-->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.mikedotjs.deltasleep</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>deltasleep</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
