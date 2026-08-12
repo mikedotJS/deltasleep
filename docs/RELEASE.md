@@ -48,8 +48,13 @@ enrolled as the individual or organization that will own this app):
    download the resulting `.cer`, then:
    ```sh
    openssl x509 -inform DER -in distribution.cer -out dist.pem
-   openssl pkcs12 -export -inkey dist.key -in dist.pem -out dist.p12 \
-     -passout "pass:$(openssl rand -base64 24 | tee dist_p12_password.txt)" \
+   # -legacy matters: OpenSSL 3.x's default PKCS12 encryption (AES-256 +
+   # SHA256 MAC) isn't something macOS's `security import` can parse — it
+   # fails with a misleading "MAC verification failed (wrong password?)"
+   # even when the password is correct. -legacy forces the older
+   # RC2/SHA1 encryption `security` actually understands.
+   openssl pkcs12 -export -legacy -inkey dist.key -in dist.pem -out dist.p12 \
+     -passout "pass:$(openssl rand -hex 24 | tee dist_p12_password.txt)" \
      -name "CI Distribution"
    ```
    Keep `dist.key`, `dist.p12`, and `dist_p12_password.txt` somewhere safe (outside
