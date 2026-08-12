@@ -45,6 +45,15 @@ public enum SleepNightAggregator {
 
             let asleepIntervals = inWindow
                 .filter { asleepStages.contains($0.stage) }
+                // Audit finding #10: a malformed sample with
+                // `startDate >= endDate` would otherwise crash `Range`'s
+                // construction (`fatalError`, not a `throws` — `try?`
+                // upstream can't catch it). HealthKit shouldn't produce
+                // one, but a corrupted local cache or a misbehaving
+                // third-party writer is enough to trigger a launch-time
+                // crash loop; skipping the sample degrades gracefully
+                // instead.
+                .filter { $0.startDate < $0.endDate }
                 .compactMap { clip($0.startDate ..< $0.endDate, to: window) }
             let totalSeconds = unionDuration(of: asleepIntervals)
             return Night.measured(date: day, asleep: SleepDuration(seconds: totalSeconds))

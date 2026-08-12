@@ -220,6 +220,24 @@ final class SleepNightAggregatorTests: XCTestCase {
         XCTAssertEqual(asleep.seconds, h(4), accuracy: 0.001)
     }
 
+    /// Audit finding #10: a malformed sample where `startDate >= endDate`
+    /// used to crash `Range`'s construction (`fatalError`, not a `throws`
+    /// — nothing upstream could catch it). It must instead be skipped,
+    /// with any other valid samples for the same night still counted.
+    func testMalformedSampleWithStartNotBeforeEndIsSkippedNotCrashed() throws {
+        let cal = utcCalendar()
+        let day = date(2026, 8, 11, 0, calendar: cal)
+        let start = date(2026, 8, 10, 23, calendar: cal)
+        let malformed = sample(.asleepCore, from: at(start, 2), to: at(start, 2)) // start == end
+        let valid = sample(.asleepCore, from: start, to: at(start, 7))
+        let nights = SleepNightAggregator.nights(
+            from: [malformed, valid], forDays: [day], calendar: cal
+        )
+        XCTAssertFalse(nights[0].isGap)
+        let asleep = try XCTUnwrap(nights[0].asleep)
+        XCTAssertEqual(asleep.seconds, h(7), accuracy: 0.001, "only the valid sample counts")
+    }
+
     func testMultipleDaysEachGetTheirOwnNight() throws {
         let cal = utcCalendar()
         let day1 = date(2026, 8, 10, 0, calendar: cal)
