@@ -20,6 +20,13 @@
 	<string>upload</string>
 	<key>signingStyle</key>
 	<string>automatic</string>
+	<!-- Without this, automatic signing during export keeps reusing whatever
+	     identity the Archive step picked — which for a fresh team with no
+	     existing Apple Distribution certificate is "Apple Development",
+	     producing an upload Apple's server rejects with "Invalid Signature"
+	     (code 90035). Forces export to create/use a real distribution cert. -->
+	<key>signingCertificate</key>
+	<string>Apple Distribution</string>
 	<key>teamID</key>
 	<string>APPLE_TEAM_ID_PLACEHOLDER</string>
 	<key>uploadSymbols</key>
