@@ -41,19 +41,46 @@ swift test --package-path Packages/SleepDebtCore
 
 ## Status
 
-Scaffolding only (P0 — see [issue #3](https://github.com/mikedotJS/deltasleep/issues/3)).
-The four packages are empty placeholders; the app and widget are blank shells that
-should build and appear in the simulator's widget gallery. Real implementation starts
-at P1 ([issue #4](https://github.com/mikedotJS/deltasleep/issues/4)).
+**Code-complete, CI-green, never run.** All phases in
+[`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) (S1/S2, P0–P10) are
+implemented and merged to the working branch — every package has real logic and unit
+tests, the app and widget have their full seven-state UI, onboarding, accessibility,
+and localisation. [CI](.github/workflows/ci.yml) (`macos-latest`) compiles the app +
+widget for iOS Simulator and runs every package's test suite on every push; that's
+the only verification that exists.
 
-This scaffold was authored without access to Xcode or a Swift toolchain (built in a
-Linux container with no path to install one). It has not been opened in Xcode or run
-through `xcodebuild` locally — [CI](.github/workflows/ci.yml), which runs on a
-`macos-latest` runner, is the first real build/test verification. Check its status
-before trusting that `xcodegen generate` and the build succeed as written.
+**What that CI green check does *not* mean:** nobody has opened this in Xcode, tapped
+through it on a simulator or device, granted it real HealthKit access, or looked at a
+single rendered screen. This was built entirely in a Linux container with no Xcode, no
+simulator runtime, and no device — compiling and passing unit tests is the ceiling of
+what's verifiable here. Expect real bugs, and expect the "liquid glass" rendering in
+particular to need adjustment once someone can actually see it (see issue #1's status
+note) — CSS backdrop-filter has no exact SwiftUI equivalent, and the current recipe is
+a structural approximation, not a pixel-matched port.
 
-## Bundle identifiers
+### First run checklist (needs a Mac + Xcode 26+ + Apple Developer account)
 
-`project.yml` uses `com.mikedotjs.deltasleep` and the `group.com.mikedotjs.deltasleep`
-App Group as placeholders. Update both to match your actual Apple Developer Team
-before provisioning or archiving.
+1. `brew install xcodegen && xcodegen generate && open DeltaSleep.xcodeproj`
+2. In `project.yml`, replace `com.mikedotjs.deltasleep` (and the matching
+   `group.com.mikedotjs.deltasleep` App Group) with your own reverse-DNS domain, then
+   re-run `xcodegen generate`. This is a placeholder everywhere in the project —
+   nothing will provision without a real bundle ID + Team.
+3. In Xcode, set your Apple Developer Team on both the `DeltaSleep` and
+   `DeltaSleepWidgetExtension` targets, and confirm the App Group entitlement
+   provisions (both targets share `group.com.mikedotjs.deltasleep` for the cache —
+   see `Packages/SnapshotStore`).
+4. **Build to a real device, not the Simulator** — HealthKit sleep data doesn't exist
+   in the Simulator, so the onboarding → authorization → first refresh path can only
+   be exercised on hardware with real Health app sleep entries.
+5. First launch shows `OnboardingView`; tapping through triggers the real HealthKit
+   prompt. After granting access, `MainScreenView` should populate from whatever sleep
+   data is in Health — if there's under 14 nights of history, expect the
+   insufficient-history state instead of a debt figure (by design, see D8 in the plan).
+6. Add the Home Screen widget (small or medium) to see the same data there.
+7. `#if DEBUG`-gated: `MainScreenViewModel.applyDebugFixture` and
+   `WidgetContentPreviews.swift` (P10) can force any of the seven states without real
+   Health data, useful for checking states you don't have real data for.
+
+Every phase's GitHub issue (#3–#13) has a "Status" section describing what was built
+and, honestly, what's still a known gap — read those before assuming a phase is fully
+done rather than "CI-verified as far as CI can verify."
