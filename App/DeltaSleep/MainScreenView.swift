@@ -24,6 +24,12 @@ struct MainScreenView: View {
     @ScaledMetric private var bigNumberSize: CGFloat = 24
     @ScaledMetric private var smallSize: CGFloat = 13
 
+    // Audit NOTE: the Stepper's 0.25h step is fine for small nudges but
+    // slow for jumping far from the current value — direct numeric entry
+    // alongside it, not instead of it.
+    @State private var showNeedEntry = false
+    @State private var needEntryText = ""
+
     init(viewModel: MainScreenViewModel, onboardingViewModel: OnboardingViewModel) {
         _viewModel = State(initialValue: viewModel)
         self.onboardingViewModel = onboardingViewModel
@@ -79,13 +85,13 @@ struct MainScreenView: View {
                 Text("Dernier rafraîchissement échoué")
                     .font(.system(size: captionSize, weight: .medium))
                     .foregroundStyle(.orange)
-                    .padding(.top, 8)
+                    .padding(.top, GlassTokens.Spacing.sm)
             }
             stateBody
-                .padding(.top, 20)
+                .padding(.top, GlassTokens.Spacing.lg)
             if let snapshot = viewModel.snapshot {
                 statRows(snapshot: snapshot)
-                    .padding(.top, 20)
+                    .padding(.top, GlassTokens.Spacing.lg)
             }
             // Audit finding #24: this is the only interactive,
             // data-changing control on the screen, but used to follow the
@@ -93,13 +99,13 @@ struct MainScreenView: View {
             // read-only stat rows above it — nothing marked the
             // transition from "information" to "setting."
             needStepper
-                .padding(.top, 24)
+                .padding(.top, GlassTokens.Spacing.xl)
                 .overlay(alignment: .top) {
                     Rectangle().fill(Color.white.opacity(0.16)).frame(height: 1)
                 }
             #if DEBUG
             debugStateMenu
-                .padding(.top, 20)
+                .padding(.top, GlassTokens.Spacing.lg)
             #endif
         }
     }
@@ -119,9 +125,16 @@ struct MainScreenView: View {
                 }
             }
         } label: {
-            Text("État de débogage")
-                .font(.system(size: smallSize, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.6))
+            // Audit NOTE: plain text with no menu affordance — DEBUG-only,
+            // but a chevron costs nothing and matches the system's own
+            // menu-trigger convention.
+            HStack(spacing: 4) {
+                Text("État de débogage")
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: smallSize * 0.7, weight: .semibold))
+            }
+            .font(.system(size: smallSize, weight: .semibold))
+            .foregroundStyle(.white.opacity(0.6))
         }
     }
     #endif
@@ -198,7 +211,7 @@ struct MainScreenView: View {
                 )
                 .font(.system(size: captionSize, weight: .medium))
                 .foregroundStyle(.white.opacity(0.6))
-                .padding(.top, 4)
+                .padding(.top, GlassTokens.Spacing.xs)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(
@@ -285,9 +298,16 @@ struct MainScreenView: View {
             step: 0.25
         ) {
             HStack {
-                Text("Besoin : \(DurationCopy.delta(.hours(viewModel.sleepNeedHours)))")
-                    .font(.system(size: captionSize, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.74))
+                Button {
+                    needEntryText = String(format: "%.2f", viewModel.sleepNeedHours)
+                    showNeedEntry = true
+                } label: {
+                    Text("Besoin : \(DurationCopy.delta(.hours(viewModel.sleepNeedHours)))")
+                        .font(.system(size: captionSize, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.74))
+                        .underline()
+                }
+                .buttonStyle(.plain)
                 if viewModel.isRefreshing {
                     ProgressView()
                         .tint(.white)
@@ -296,6 +316,20 @@ struct MainScreenView: View {
             }
         }
         .tint(.white)
+        .alert("Besoin de sommeil", isPresented: $showNeedEntry) {
+            TextField("Heures (4–12)", text: $needEntryText)
+                .keyboardType(.decimalPad)
+            Button("Annuler", role: .cancel) {}
+            Button("Valider") {
+                guard let hours = Double(needEntryText.replacingOccurrences(of: ",", with: "."))
+                else {
+                    return
+                }
+                viewModel.updateSleepNeed(hours: min(max(hours, 4), 12))
+            }
+        } message: {
+            Text("Entre une valeur entre 4 et 12 heures.")
+        }
     }
 
     /// Deep-links to this app's Settings page (Réglages → Santé is one tap
@@ -380,13 +414,18 @@ private struct PhoneFigureSection: View {
 
     @ScaledMetric private var captionSize: CGFloat = 13
     @ScaledMetric private var tinySize: CGFloat = 10
+    /// Audit finding #22: no legend anywhere for the gauge's ticks or the
+    /// night strip's encoding — a persistent, always-available "?" rather
+    /// than a one-time coach-mark (simpler, no state to persist, always
+    /// there if the user forgets).
+    @State private var showLegend = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             figureAndGauge
             if !nightBars.isEmpty {
                 nightStrip
-                    .padding(.top, 24)
+                    .padding(.top, GlassTokens.Spacing.xl)
             }
         }
     }
@@ -395,10 +434,13 @@ private struct PhoneFigureSection: View {
         VStack(alignment: .leading, spacing: 0) {
             let numerals = debt.wholeHoursAndMinutes
             DebtFigure(hours: numerals.hours, minutes: numerals.minutes, tint: tint, size: .phone)
-            gauge
-                .padding(.top, 18)
+            HStack(spacing: 8) {
+                gauge
+                legendButton
+            }
+            .padding(.top, 18)
             deltaRow
-                .padding(.top, 12)
+                .padding(.top, GlassTokens.Spacing.md)
         }
         // VoiceOver (docs/IMPLEMENTATION_PLAN.md §5, P9): one stop for the
         // figure, the gauge, and the delta context together — the plan's
@@ -418,6 +460,45 @@ private struct PhoneFigureSection: View {
             tint: tint,
             height: .tall
         )
+    }
+
+    private var legendButton: some View {
+        Button {
+            showLegend = true
+        } label: {
+            Image(systemName: "questionmark.circle")
+                .font(.system(size: 15))
+                .foregroundStyle(.white.opacity(0.5))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Légende de la jauge et de la bande de nuits")
+        .popover(isPresented: $showLegend) {
+            legendContent
+                .padding()
+                .presentationCompactAdaptation(.popover)
+        }
+    }
+
+    private var legendContent: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            legendRow(symbol: "circle.dashed", text: "Trait pointillé : objectif (5h de dette)")
+            legendRow(symbol: "minus", text: "Trait plein clair : dette d'hier")
+            legendRow(symbol: "arrow.up.arrow.down", text: "▲/▼ : évolution depuis hier/lundi")
+            legendRow(
+                symbol: "rectangle.split.3x1",
+                text: "Bande : nuits au-dessus/en dessous du besoin, 14 dernières"
+            )
+        }
+        .font(.caption)
+        .frame(maxWidth: 260, alignment: .leading)
+    }
+
+    private func legendRow(symbol: String, text: String) -> some View {
+        Label {
+            Text(text)
+        } icon: {
+            Image(systemName: symbol)
+        }
     }
 
     /// Built from a handful of fixed, fully-formed sentence templates
@@ -502,10 +583,19 @@ private struct PhoneFigureSection: View {
         }
     }
 
+    /// Audit NOTE: an exactly-zero delta used to render as `.up` — a
+    /// "rising" arrow for a value that didn't actually change.
+    private static func direction(for delta: SleepDuration) -> DeltaChip.Direction {
+        if delta.seconds == 0 {
+            return .flat
+        }
+        return delta.seconds > 0 ? .up : .down
+    }
+
     private func deltaChip(_ delta: SleepDuration, caption: LocalizedStringKey) -> some View {
         HStack(spacing: 4) {
             DeltaChip(
-                direction: delta.seconds >= 0 ? .up : .down,
+                direction: Self.direction(for: delta),
                 text: DurationCopy.delta(SleepDuration(seconds: abs(delta.seconds)))
             )
             Text(caption)
@@ -527,7 +617,7 @@ private struct PhoneFigureSection: View {
             }
             .font(.system(size: tinySize))
             .foregroundStyle(.white.opacity(0.5))
-            .padding(.top, 8)
+            .padding(.top, GlassTokens.Spacing.sm)
         }
         // VoiceOver (P9): "the strip as a summarised series," not 14
         // individually-focusable bars a screen reader user would have to

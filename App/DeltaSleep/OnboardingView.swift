@@ -38,6 +38,17 @@ struct OnboardingView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(RGBA(r255: 15, g255: 191, b255: 122).color)
                 .disabled(viewModel.isRequesting)
+                // Audit NOTE: the only visible forward action was the
+                // system-prompt trigger itself — declining was only
+                // possible via the system sheet's own Cancel/Don't Allow,
+                // never explained or offered in-app.
+                Button("Plus tard") {
+                    viewModel.skipForNow()
+                }
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.white.opacity(0.6))
+                .disabled(viewModel.isRequesting)
+                .frame(maxWidth: .infinity)
             }
             .padding(32)
         }

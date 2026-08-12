@@ -44,17 +44,17 @@ Note: parcours manuel sur simulateur impossible dans cet environnement
 (cible de déploiement iOS 26.0, aucun runtime simulateur disponible ici
 — même limite qu'en Phase 1). Build/link structurel vérifié.
 
-## Phase 5 — #22 et NOTE restants [ ]
+## Phase 5 — #22 et NOTE restants [x]
 Objectif: chaque finding restant traité individuellement, aucune régression sur l'existant
 Vérif: `swift test` sur les 4 packages + `swiftlint lint --strict` + `swiftformat App Widget Packages --lint` + build simulateur
-- [ ] #22 : affordance "?" persistante près de la jauge/bande de nuits (légende courte, pas de coach-mark à état persisté — plus simple, toujours disponible)
-- [ ] delta exactement nul (▲ 0 min) : direction neutre au lieu de "hausse" par défaut
-- [ ] Stepper besoin de sommeil : saisie numérique directe (en plus du Stepper, pas à sa place)
-- [ ] Onboarding : bouton secondaire "Plus tard" (complète l'onboarding sans déclencher le prompt système)
-- [ ] Menu debug : icône chevron (DEBUG uniquement)
-- [ ] `GlassTokens` : scale de spacing partagée (xs/sm/md/lg), migration des literals les plus répétés dans `MainScreenView`/`WidgetContent`
-- [ ] `breakEvenTarget` : décision — afficher en stat row ("Nuit cible") ou documenter explicitement pourquoi il reste interne
-- [ ] `DeltaChip` : label d'accessibilité par défaut si utilisé hors de son wrapper `.combine` actuel
+- [x] #22 : affordance "?" persistante près de la jauge/bande de nuits (popover légende courte, pas de coach-mark à état persisté)
+- [x] delta exactement nul (▲ 0 min) : nouveau cas `DeltaChip.Direction.flat` au lieu de "hausse" par défaut
+- [x] Stepper besoin de sommeil : saisie numérique directe (alert + TextField, en plus du Stepper)
+- [x] Onboarding : bouton secondaire "Plus tard" (complète l'onboarding sans déclencher le prompt système)
+- [x] Menu debug : icône chevron (DEBUG uniquement)
+- [x] `GlassTokens.Spacing` : scale xs/sm/md/lg/xl, migré les literals répétés de `MainScreenView` (widget laissé tel quel — ses 9/14pt ne collent pas à l'échelle sans changer son layout compact)
+- [x] `breakEvenTarget` : décision documentée dans `DebtSnapshot.swift` (reste interne — 5e stat row ferait doublon avec le tick de la jauge)
+- [x] `DeltaChip` : label d'accessibilité par défaut si utilisé hors de son wrapper `.combine` actuel
 
 ## Phase 6 — États secondaires et polish [ ]
 Objectif: chaque nouveau flow (Réglages, Historique) a ses états empty/erreur/loading, aucun dead end, cohérence visuelle avec l'existant

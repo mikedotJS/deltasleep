@@ -26,6 +26,19 @@ public enum GlassTokens {
     public static let phonePaddingHorizontal: Double = 22
     public static let phonePaddingVertical: Double = 26
 
+    /// Audit NOTE: a shared progression for the many one-off spacing
+    /// literals scattered across `MainScreenView`/`WidgetContent` — not
+    /// every literal in the app is migrated onto this (that'd be its own
+    /// large, risky diff across working layout code), but new call sites
+    /// should prefer these over another bespoke number.
+    public enum Spacing {
+        public static let xs: Double = 4
+        public static let sm: Double = 8
+        public static let md: Double = 12
+        public static let lg: Double = 20
+        public static let xl: Double = 24
+    }
+
     // MARK: - Per-tint palettes
 
     public static func palette(for tint: GlassTint) -> TintPalette {

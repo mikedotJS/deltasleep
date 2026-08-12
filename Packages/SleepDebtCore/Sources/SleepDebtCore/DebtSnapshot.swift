@@ -21,8 +21,17 @@ public struct DebtSnapshot: Equatable, Codable, Sendable {
 
     /// Tonight's target: the sleep duration that would make `trend`
     /// `.flat` if repeated — i.e. the recency-weighted average of the
-    /// window excluding last night. Not shown as a state, but potentially
-    /// useful copy (docs/IMPLEMENTATION_PLAN.md's P7 notes).
+    /// window excluding last night.
+    ///
+    /// Decision (post-audit PLAN.md Phase 5, resolving the "NOTE:
+    /// calculated but never displayed" finding): stays internal for now.
+    /// `MainScreenView` already surfaces 4 stat rows plus the figure,
+    /// gauge, and night strip — a 5th "Nuit cible" row competes with the
+    /// gauge's own target tick (`LiquidGauge`'s dashed marker,
+    /// `GaugeMapping.targetFraction`) for the same concept, and adding it
+    /// without a design pass risks visual noise rather than clarity.
+    /// Kept computed and persisted (cheap, and the value is meaningful)
+    /// so a future screen can read it without an engine change.
     public let breakEvenTarget: SleepDuration
 
     /// Signed; positive means debt rose. `nil` when yesterday's own window

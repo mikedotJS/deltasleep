@@ -35,6 +35,17 @@ final class OnboardingViewModel {
         isRequesting = false
     }
 
+    /// "Plus tard" (audit NOTE — the only visible forward action used to
+    /// be the HealthKit prompt itself; declining it was only possible via
+    /// the system sheet's own Cancel/Don't Allow, never explained in-app).
+    /// Completes onboarding without ever triggering the system prompt —
+    /// the main screen's `.noData` state already has its own "Autoriser
+    /// l'accès" recovery action for whenever the user is ready.
+    func skipForNow() {
+        userDefaults.set(true, forKey: Self.didCompleteOnboardingKey)
+        hasCompletedOnboarding = true
+    }
+
     /// "Revoir l'explication" (post-audit PLAN.md Phase 2, closes one of
     /// the 3 confirmed capability gaps in BUSINESS_RULES.md — there was
     /// previously no way back to this screen once completed). Flips the

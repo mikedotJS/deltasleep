@@ -208,12 +208,22 @@ private struct FigureCard: View {
         }
     }
 
+    /// Audit NOTE: an exactly-zero delta used to render as `.up` — a
+    /// "rising" arrow for a value that didn't actually change. Same
+    /// fix as `MainScreenView`'s twin helper.
+    private static func direction(for delta: SleepDuration) -> DeltaChip.Direction {
+        if delta.seconds == 0 {
+            return .flat
+        }
+        return delta.seconds > 0 ? .up : .down
+    }
+
     @ViewBuilder
     private var bottomRow: some View {
         if let deltaSinceYesterday {
             HStack(spacing: 4) {
                 DeltaChip(
-                    direction: deltaSinceYesterday.seconds >= 0 ? .up : .down,
+                    direction: Self.direction(for: deltaSinceYesterday),
                     text: DurationCopy.delta(
                         SleepDuration(seconds: abs(deltaSinceYesterday.seconds))
                     )

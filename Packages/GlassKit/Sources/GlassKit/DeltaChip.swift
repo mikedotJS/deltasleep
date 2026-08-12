@@ -9,9 +9,26 @@ public struct DeltaChip: View {
     public enum Direction: Sendable {
         case up
         case down
+        /// Audit NOTE: an exactly-zero delta used to render with `.up`'s
+        /// glyph at every call site (`delta.seconds >= 0 ? .up : .down`)
+        /// — a "rising" arrow for a value that didn't move. `.flat` gives
+        /// callers a real third option instead of defaulting to `.up`.
+        case flat
 
         var glyph: String {
-            self == .up ? "▲" : "▼"
+            switch self {
+            case .up: "▲"
+            case .down: "▼"
+            case .flat: "–"
+            }
+        }
+
+        var accessibilityDescription: String {
+            switch self {
+            case .up: "en hausse"
+            case .down: "en baisse"
+            case .flat: "stable"
+            }
         }
     }
 
@@ -36,5 +53,13 @@ public struct DeltaChip: View {
         .padding(.vertical, 2)
         .background(Capsule().fill(Color.white.opacity(0.18)))
         .overlay(Capsule().strokeBorder(Color.white.opacity(0.4), lineWidth: 0.5))
+        // Audit NOTE: a sensible default for a caller that uses this chip
+        // outside its usual parent-supplied `.combine` wrapper — without
+        // this, VoiceOver reads the bare glyph literally ("triangle plein
+        // pointe en haut"). A parent that already sets its own
+        // `.accessibilityLabel` after combining children overrides this,
+        // so it's additive, never conflicting.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(direction.accessibilityDescription), \(text)")
     }
 }
