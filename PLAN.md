@@ -26,12 +26,12 @@ Vérif: manuel — "Revoir l'explication" repasse à l'onboarding ; "Effacer mes
 - [x] `Alert` de confirmation avant "Effacer mes données" (action destructive)
 - [x] tests unitaires sur la fonction de reset (package concerné)
 
-## Phase 3 — Historique étendu : données [ ]
+## Phase 3 — Historique étendu : données [x]
 Objectif: capacité de lire un historique au-delà de la fenêtre de calcul de 14 nuits, testée indépendamment de toute UI
 Vérif: `swift test --package-path Packages/HealthSleepSource && swift test --package-path Packages/SnapshotStore`
-- [ ] étendre `SleepIngestion`/`HealthKitSleepSource` pour fetch une plage arbitraire (pas juste la fenêtre 21 jours actuelle)
-- [ ] agrégation simple par nuit (réutilise `Night`, pas de nouveau modèle si possible)
-- [ ] tests sur la nouvelle plage de fetch
+- [x] étendre `SleepIngestion`/`HealthKitSleepSource` pour fetch une plage arbitraire (pas juste la fenêtre 21 jours actuelle) — `nights(for:from:calendar:)` l'acceptait déjà ; ajouté `days(count:endingOn:calendar:)` pour construire facilement une plage large
+- [x] agrégation simple par nuit (réutilise `Night`, pas de nouveau modèle)
+- [x] tests sur la nouvelle plage de fetch
 
 ## Phase 4 — Historique étendu : UI [ ]
 Objectif: écran Historique accessible depuis Réglages, liste/scroll des nuits passées au-delà des 14 dernières, état vide géré
