@@ -62,6 +62,20 @@ targets:
         INFOPLIST_KEY_NSHealthShareUsageDescription: >-
           deltasleep lit tes nuits de sommeil dans Santé pour calculer ta
           dette de sommeil. Rien ne quitte ton appareil.
+        # deltasleep never writes to HealthKit — this key is required by
+        # Apple's App Store validator anyway because linking HealthKit.framework
+        # pulls in APIs covered by the write-access check, regardless of use.
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: >-
+          deltasleep n'écrit jamais dans Santé. Cette autorisation n'est
+          jamais utilisée.
+        # Required by Apple's validator for iPad multitasking support (the
+        # app targets both iPhone and iPad via the default TARGETED_DEVICE_FAMILY).
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: >-
+          UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
+          UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_UISupportedInterfaceOrientations~ipad: >-
+          UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
+          UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
 
