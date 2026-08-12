@@ -69,8 +69,16 @@ struct MainScreenView: View {
                 statRows(snapshot: snapshot)
                     .padding(.top, 20)
             }
+            // Audit finding #24: this is the only interactive,
+            // data-changing control on the screen, but used to follow the
+            // exact same padding rhythm and comparable opacity as the
+            // read-only stat rows above it — nothing marked the
+            // transition from "information" to "setting."
             needStepper
-                .padding(.top, 20)
+                .padding(.top, 24)
+                .overlay(alignment: .top) {
+                    Rectangle().fill(Color.white.opacity(0.16)).frame(height: 1)
+                }
             #if DEBUG
             debugStateMenu
                 .padding(.top, 20)
@@ -102,13 +110,19 @@ struct MainScreenView: View {
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
+            // Audit finding #23: this header sits directly in
+            // GlassSurface's bloom gradient's highest-saturation corner.
+            // Nudged opacity up as a safe, contrast-only-improves
+            // mitigation — exact on-device measurement across all 4
+            // tints is still open (see AUDIT_FINDINGS.md's
+            // "cas non vérifiables statiquement").
             Text("DETTE DE SOMMEIL")
                 .font(.system(size: labelSize, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.72))
+                .foregroundStyle(.white.opacity(0.8))
             Spacer()
             Text("14 NUITS")
                 .font(.system(size: labelSize, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.45))
+                .foregroundStyle(.white.opacity(0.55))
         }
     }
 

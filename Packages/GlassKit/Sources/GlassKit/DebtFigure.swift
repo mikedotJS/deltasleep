@@ -60,6 +60,14 @@ public struct DebtFigure: View {
         (hoursText + unitText + minutesText)
             .foregroundStyle(figureGradient(figureEnd: palette.figureGradientEnd.color))
             .shadow(color: .black.opacity(0.28), radius: 5, x: 0, y: 2)
+            // Audit finding #15: debt is never capped (only the gauge
+            // saturates, at 24h) and can mathematically reach 3 digits of
+            // hours. Without this, a long-enough debt combined with a
+            // large Dynamic Type size had no fallback — clipped by
+            // GlassSurface on the phone screen, or overflowing the
+            // widget's fixed-width column.
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
     }
 
     private func numeralFont(pointSize: CGFloat) -> Font {
@@ -82,7 +90,13 @@ public struct DebtFigure: View {
 extension DebtFigure {
     /// Zero-padded minutes matching the mockup's "13h04" style (never
     /// "13h4") — pulled out of the view body so it's testable on its own.
-    static func formattedMinutes(_ minutes: Int) -> String {
+    /// `nonisolated` because `View` conformance implicitly MainActor-isolates
+    /// the whole type under newer Swift concurrency checking, but this is
+    /// pure formatting with no UI state — DebtFigureTests calls it from a
+    /// synchronous, non-isolated XCTest context (pre-existing failure,
+    /// unrelated to the audit fixes in this commit; fixed incidentally
+    /// because it blocked verifying them).
+    nonisolated static func formattedMinutes(_ minutes: Int) -> String {
         String(format: "%02d", minutes)
     }
 }

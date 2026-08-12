@@ -60,10 +60,12 @@ public struct LiquidGauge: View {
                     .frame(width: proxy.size.width * fillFraction)
                     .shadow(color: palette.fillGlow.color, radius: 7)
                 if let targetFraction {
-                    tick(
-                        at: targetFraction, in: proxy.size.width, width: 1,
-                        tickHeight: height.trackHeight, color: .white.opacity(0.4)
-                    )
+                    // Audit finding #21: was a solid capsule distinguished
+                    // from the "yesterday" ghost tick only by 1pt of width
+                    // and opacity — easy to misread at the widget's
+                    // compact scale. Dashed reads unambiguously as a
+                    // static reference marker rather than a data point.
+                    targetTick(at: targetFraction, in: proxy.size.width)
                 }
                 if let ghostFraction {
                     tick(
@@ -88,5 +90,12 @@ public struct LiquidGauge: View {
             .fill(color)
             .frame(width: width, height: tickHeight)
             .offset(x: trackWidth * fraction - width / 2, y: -(tickHeight - height.trackHeight) / 2)
+    }
+
+    private func targetTick(at fraction: Double, in trackWidth: CGFloat) -> some View {
+        Rectangle()
+            .stroke(Color.white.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+            .frame(width: 1, height: height.trackHeight)
+            .offset(x: trackWidth * fraction - 0.5)
     }
 }
