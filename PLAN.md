@@ -56,10 +56,10 @@ Vérif: `swift test` sur les 4 packages + `swiftlint lint --strict` + `swiftform
 - [x] `breakEvenTarget` : décision documentée dans `DebtSnapshot.swift` (reste interne — 5e stat row ferait doublon avec le tick de la jauge)
 - [x] `DeltaChip` : label d'accessibilité par défaut si utilisé hors de son wrapper `.combine` actuel
 
-## Phase 6 — États secondaires et polish [ ]
+## Phase 6 — États secondaires et polish [x]
 Objectif: chaque nouveau flow (Réglages, Historique) a ses états empty/erreur/loading, aucun dead end, cohérence visuelle avec l'existant
 Vérif: `swift test` sur les 4 packages + `swiftlint lint --strict` + archive Release/device non signée (`xcodebuild archive ... CODE_SIGNING_ALLOWED=NO`)
-- [ ] Réglages/Historique : état de chargement si pertinent
-- [ ] chaque nouvel écran a une sortie claire (bouton retour visible, pas juste le geste de swipe)
-- [ ] passe de cohérence visuelle (les nouveaux écrans utilisent `GlassTokens`, pas de valeurs codées en dur nouvelles)
-- [ ] mise à jour `BUSINESS_RULES.md` : les 3 cases vides ne sont plus des trous, section "Validation utilisateur" à jour
+- [x] Réglages/Historique : état de chargement si pertinent (`HistoryView` : `ProgressView` pendant le fetch, `isErasing` sur le bouton "Effacer")
+- [x] chaque nouvel écran a une sortie claire (bouton retour automatique de `NavigationStack`, ni `SettingsView` ni `HistoryView` ne le masque)
+- [x] passe de cohérence visuelle (`GlassTokens.Spacing` utilisé dans les ajouts de Phase 5 ; Réglages/Historique en `List` native — choix délibéré, écrans utilitaires distincts du "glass card" de l'écran principal, pas un oubli)
+- [x] mise à jour `BUSINESS_RULES.md` : les 3 cases vides marquées **comblées**, section "Validation utilisateur" à jour

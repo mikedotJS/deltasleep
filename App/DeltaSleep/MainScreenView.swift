@@ -434,7 +434,7 @@ private struct PhoneFigureSection: View {
         VStack(alignment: .leading, spacing: 0) {
             let numerals = debt.wholeHoursAndMinutes
             DebtFigure(hours: numerals.hours, minutes: numerals.minutes, tint: tint, size: .phone)
-            HStack(spacing: 8) {
+            HStack(spacing: GlassTokens.Spacing.sm) {
                 gauge
                 legendButton
             }
@@ -480,7 +480,7 @@ private struct PhoneFigureSection: View {
     }
 
     private var legendContent: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: GlassTokens.Spacing.sm) {
             legendRow(symbol: "circle.dashed", text: "Trait pointillé : objectif (5h de dette)")
             legendRow(symbol: "minus", text: "Trait plein clair : dette d'hier")
             legendRow(symbol: "arrow.up.arrow.down", text: "▲/▼ : évolution depuis hier/lundi")

@@ -19,11 +19,11 @@ worktree `.claude/worktrees/agent-aa7a751228c30e57c`, chemins relatifs identique
 | **SleepNeed** (besoin de sommeil) | ⚠️ implicite : valeur par défaut 8h00 si jamais réglée (`SleepNeedStore.swift:11,19-22`) | ✅ ligne « Besoin réglé » | ✅ Stepper 4h–12h par pas de 0,25h (`MainScreenView.swift:211-227`) | ❌ pas de « reset » — toujours une valeur | ❌ |
 | **HealthAuthorizationState** | — (résolu, jamais stocké tel quel) | ⚠️ jamais affiché littéralement — sert en interne à choisir le bouton (`MainScreenViewModel.swift:69-77`) | ✅ indirect via « Autoriser l'accès » (déclenche le prompt système, `MainScreenView.swift:253-256`) | ❌ | ✅ « Ouvrir les réglages » (deep‑link Réglages de l'app, `MainScreenView.swift:233-236,260`) |
 | **WidgetState** | — dérivé | ✅ écran principal + widget | ❌ jamais modifié directement | ❌ | ❌ |
-| **Onboarding (flag `didCompleteOnboarding`)** | ⚠️ implicite : `false` au premier lancement | ⚠️ interne (`RootView.swift:13`) | ✅ un seul sens, `false → true`, au tap « Autoriser l'accès au sommeil » (`OnboardingViewModel.swift:30-36`) | ❌ **AUCUN moyen dans l'UI de repasser à `false`** (pas de « revoir l'onboarding ») | — **case vide à signaler** |
+| **Onboarding (flag `didCompleteOnboarding`)** | ⚠️ implicite : `false` au premier lancement | ⚠️ interne (`RootView.swift:13`) | ✅ deux sens désormais : `false → true` au tap « Autoriser l'accès » ou « Plus tard » (`OnboardingViewModel.swift`), **et `true → false`** via Réglages → « Revoir l'explication » (`SettingsViewModel.reviewOnboarding()`, PLAN.md Phase 2) | ✅ via Réglages → « Effacer mes données » (reset complet, PLAN.md Phase 2) | ✅ **comblé** — trou fermé |
 | **DebugStateFixture** (état de debug) | — | ✅ menu (`MainScreenView.swift:77-90`), **`#if DEBUG` uniquement**, absent des builds Release | ✅ « applique » un des 7 états forcés (`MainScreenViewModel.swift:101-104`) | — | ⚠️ n'existe pas en production — capacité utilisateur nulle hors debug |
 | **Widget (rendu)** | — | ✅ lecture seule | ❌ | ❌ | ✅ tap = ouverture de l'app via deep‑link `deltasleep://open` (`WidgetContent.swift:28`) ; **aucune configuration du widget lui‑même** (pas d'App Intents/paramètres) — case vide à signaler |
-| **Historique complet (> 14 nuits)** | — | ❌ **aucune vue ne permet de consulter un historique au‑delà de la fenêtre de 14 nuits / du delta depuis lundi** | — | — | **capacité absente, à signaler** |
-| **Réinitialisation des données locales** | — | — | — | ❌ **aucune fonction « effacer mes données » / déconnexion dans l'app** ; seule la révocation d'accès Santé depuis Réglages (externe à l'app) a un effet | — **case vide à signaler** |
+| **Historique complet (> 14 nuits)** | — | ✅ `HistoryView` via Réglages → « Historique » (`SleepIngestion.days(count:endingOn:calendar:)`, `RefreshOrchestrator.history(daysBack:)`, PLAN.md Phase 3-4) — lecture seule, 90 nuits par défaut | — | — | ✅ **comblé** — trou fermé |
+| **Réinitialisation des données locales** | — | — | — | ✅ Réglages → « Effacer mes données » (`SettingsViewModel.eraseAllData()` : vide `SnapshotStore` + `SleepNeedStore` + flag d'autorisation HealthKit, PLAN.md Phase 2), avec confirmation | ✅ **comblé** — trou fermé |
 
 ---
 
@@ -177,9 +177,10 @@ worktree `.claude/worktrees/agent-aa7a751228c30e57c`, chemins relatifs identique
   orchestration, onboarding, réglage du besoin, widget, affichage/arrondis, accessibilité, debug).
 - **10 entités** inventoriées (Night, DebtSnapshot, SleepNeed, HealthAuthorizationState,
   WidgetState, flag Onboarding, DebugStateFixture, Widget en tant que surface, « Historique
-  complet », « Réinitialisation des données »), avec **3 cases vides signalées** : pas de moyen
-  UI de repasser l'onboarding à zéro, pas de consultation d'historique au‑delà de 14 nuits /
-  du delta depuis lundi, et aucune fonction de réinitialisation/déconnexion des données locales.
+  complet », « Réinitialisation des données »). **Les 3 cases vides signalées à l'origine sont
+  désormais comblées** (voir `AUDIT_FINDINGS.md`, PLAN.md Phases 2-4) : Réglages → « Revoir
+  l'explication » repasse l'onboarding à zéro, Réglages → « Historique » consulte au‑delà de
+  14 nuits, Réglages → « Effacer mes données » réinitialise le cache local.
 
 ### Règles à valider humainement en priorité (suspectes)
 
@@ -224,6 +225,9 @@ risque de drift si la fenêtre de calcul change un jour.
   bug. Un fetch à 0 nuit mesurée ne doit pas écraser silencieusement un historique déjà établi.
 - **§93** (fixtures debug figées à 8h00 de besoin) : `[fix]` — confirmé bug. Les fixtures doivent
   utiliser le besoin réellement configuré (`SleepNeedStore`).
-- **Case vide « revoir l'onboarding »** : confirmé comme trou réel → capacité à ajouter.
-- **Case vide « historique > 14 nuits »** : confirmé comme trou réel → capacité à ajouter.
-- **Case vide « effacer mes données »** : confirmé comme trou réel → capacité à ajouter.
+- **Case vide « revoir l'onboarding »** : confirmé comme trou réel → **comblé** (PLAN.md Phase 2,
+  `OnboardingViewModel.resetOnboarding()` via `SettingsView`).
+- **Case vide « historique > 14 nuits »** : confirmé comme trou réel → **comblé** (PLAN.md
+  Phases 3-4, `HistoryView`/`RefreshOrchestrator.history(daysBack:)`).
+- **Case vide « effacer mes données »** : confirmé comme trou réel → **comblé** (PLAN.md Phase 2,
+  `SettingsViewModel.eraseAllData()`).
