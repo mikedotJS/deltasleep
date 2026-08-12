@@ -72,14 +72,18 @@ final class RefreshCoordinatorTests: XCTestCase {
         private(set) var historyAvailability: HistoryAvailability?
         private(set) var writeOrder: [String] = []
 
-        func readSnapshot() -> DebtSnapshot? { snapshot }
+        func readSnapshot() -> DebtSnapshot? {
+            snapshot
+        }
 
         func writeSnapshot(_ snapshot: DebtSnapshot) throws {
             self.snapshot = snapshot
             writeOrder.append("snapshot")
         }
 
-        func readHistoryAvailability() -> HistoryAvailability? { historyAvailability }
+        func readHistoryAvailability() -> HistoryAvailability? {
+            historyAvailability
+        }
 
         func writeHistoryAvailability(_ availability: HistoryAvailability) throws {
             historyAvailability = availability

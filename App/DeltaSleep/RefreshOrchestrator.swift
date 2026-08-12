@@ -85,11 +85,11 @@ actor RefreshOrchestrator {
         noonRefreshTask?.cancel()
         noonRefreshTask = Task { [weak self] in
             while !Task.isCancelled {
-                guard let self, let next = await self.nextNoon(after: Date()) else { return }
+                guard let self, let next = await nextNoon(after: Date()) else { return }
                 let interval = max(next.timeIntervalSinceNow, 1)
                 try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
                 guard !Task.isCancelled else { return }
-                await self.refreshNow()
+                await refreshNow()
             }
         }
     }

@@ -66,32 +66,32 @@ enum DebugStateFixture: String, CaseIterable, Identifiable {
         case .nominalFalling:
             Self.snapshot(
                 now: now, need: need, debt: .hm(6, 30), trend: .falling,
-                deltaSinceYesterday: .hm(-1, 0), deltaSinceMonday: .hm(-2, 15),
+                deltas: (sinceYesterday: .hm(-1, 0), sinceMonday: .hm(-2, 15)),
                 lastNightIsGap: false, lastNightSleepDuration: .hm(8, 40), surplus: true
             )
         case .nominalRising:
             Self.snapshot(
                 now: now, need: need, debt: .hm(13, 4), trend: .rising,
-                deltaSinceYesterday: .hm(1, 10), deltaSinceMonday: .hm(2, 30),
+                deltas: (sinceYesterday: .hm(1, 10), sinceMonday: .hm(2, 30)),
                 lastNightIsGap: false, lastNightSleepDuration: .hm(6, 12), surplus: false
             )
         case .zero:
             Self.snapshot(
                 now: now, need: need, debt: .zero, trend: .falling,
-                deltaSinceYesterday: .hm(0, 30), deltaSinceMonday: .hm(1, 0),
+                deltas: (sinceYesterday: .hm(0, 30), sinceMonday: .hm(1, 0)),
                 lastNightIsGap: false, lastNightSleepDuration: .hm(8, 20), surplus: true
             )
         case .cached:
             Self.snapshot(
                 now: now.addingTimeInterval(-StalenessPolicy.staleAfter - 3600), need: need,
                 debt: .hm(9, 15), trend: .rising,
-                deltaSinceYesterday: .hm(0, 45), deltaSinceMonday: .hm(1, 20),
+                deltas: (sinceYesterday: .hm(0, 45), sinceMonday: .hm(1, 20)),
                 lastNightIsGap: false, lastNightSleepDuration: .hm(7, 10), surplus: false
             )
         case .nightMissing:
             Self.snapshot(
                 now: now, need: need, debt: .hm(9, 40), trend: .unknown,
-                deltaSinceYesterday: nil, deltaSinceMonday: nil,
+                deltas: (sinceYesterday: nil, sinceMonday: nil),
                 lastNightIsGap: true, lastNightSleepDuration: nil, surplus: false
             )
         }
@@ -102,8 +102,7 @@ enum DebugStateFixture: String, CaseIterable, Identifiable {
         need: SleepNeed,
         debt: SleepDuration,
         trend: Trend,
-        deltaSinceYesterday: SleepDuration?,
-        deltaSinceMonday: SleepDuration?,
+        deltas: (sinceYesterday: SleepDuration?, sinceMonday: SleepDuration?),
         lastNightIsGap: Bool,
         lastNightSleepDuration: SleepDuration?,
         surplus: Bool
@@ -117,8 +116,8 @@ enum DebugStateFixture: String, CaseIterable, Identifiable {
             // second figure that could disagree with the tester's real
             // setting, on top of the one `need` itself used to be.
             breakEvenTarget: need.duration,
-            deltaSinceYesterday: deltaSinceYesterday,
-            deltaSinceMonday: deltaSinceMonday,
+            deltaSinceYesterday: deltas.sinceYesterday,
+            deltaSinceMonday: deltas.sinceMonday,
             fourteenNightAverage: .hm(7, 15),
             measuredNightCount: 13,
             gapCount: 1,

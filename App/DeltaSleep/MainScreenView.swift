@@ -172,10 +172,15 @@ struct MainScreenView: View {
                 // Audit finding #18: the only one of the 7 states with no
                 // actionable copy at all — this explains there's nothing
                 // to do but keep the phone/Watch tracking sleep as usual.
-                Text("Continue de porter ta montre ou de dormir avec ton iPhone à proximité — la lecture s'activera automatiquement.")
-                    .font(.system(size: captionSize, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .padding(.top, 4)
+                Text(
+                    """
+                    Continue de porter ta montre ou de dormir avec ton iPhone à proximité \
+                    — la lecture s'activera automatiquement.
+                    """
+                )
+                .font(.system(size: captionSize, weight: .medium))
+                .foregroundStyle(.white.opacity(0.6))
+                .padding(.top, 4)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(

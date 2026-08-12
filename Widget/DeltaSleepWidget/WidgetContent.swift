@@ -85,7 +85,10 @@ struct DeltaSleepWidgetEntryView: View {
         case let .insufficientHistory(measured, required):
             InsufficientHistoryContent(measured: measured, required: required)
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel(insufficientHistoryLabel(measured: measured, required: required))
+                .accessibilityLabel(insufficientHistoryLabel(
+                    measured: measured,
+                    required: required
+                ))
         case let .nightMissing(debt):
             FigureCard(
                 debt: debt,
@@ -118,7 +121,9 @@ struct DeltaSleepWidgetEntryView: View {
 
     private func insufficientHistoryLabel(measured: Int, required: Int) -> String {
         let nightsWord = measured == 1 ? "nuit" : "nuits"
-        return String(localized: "Historique insuffisant : \(measured) \(nightsWord) sur \(required).")
+        return String(
+            localized: "Historique insuffisant : \(measured) \(nightsWord) sur \(required)."
+        )
     }
 
     /// FR + EN strings (docs/IMPLEMENTATION_PLAN.md §5, P9, D9): two fixed
