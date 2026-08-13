@@ -68,6 +68,16 @@ public enum RefreshCoordinator {
         // gates the insufficient-history state, not zero gaps in the
         // current window. This resolves D8's previously open sub-question
         // (docs/IMPLEMENTATION_PLAN.md, and issue #4's status note).
+        // Every branch below has to reload widget timelines when it changes
+        // what's on disk, not just the `.sufficient` one at the bottom. The
+        // three early returns used to write and return without telling
+        // WidgetKit anything, so a widget sitting in `.insufficientHistory`
+        // kept rendering a stale count — the app showed "10 nuits sur 14"
+        // while the widget still said 9, until the widget's own 6h staleness
+        // policy happened to fire. Reload only on an actual change, though:
+        // WidgetKit's reload budget is finite, and refreshes fire on every
+        // scene activation and every HealthKit observer wake.
+        let previousAvailability = store.readHistoryAvailability()
         let measuredCount = nights.filter { !$0.isGap }.count
         guard measuredCount > 0 else {
             // Audit finding #1: a single fetch returning zero measured
@@ -79,19 +89,24 @@ public enum RefreshCoordinator {
             // prior snapshot, no prior availability) still correctly
             // writes `.none`.
             let hadHistory = store.readSnapshot() != nil
-                || (store.readHistoryAvailability() ?? .none) != .none
+                || (previousAvailability ?? .none) != .none
             if !hadHistory {
                 try store.writeHistoryAvailability(.none)
+                if previousAvailability != HistoryAvailability.none {
+                    reloader.reloadAllTimelines()
+                }
             }
             return .noData
         }
         guard measuredCount >= DebtEngineConstants.minimumHistoryNights else {
-            try store.writeHistoryAvailability(
-                .insufficient(
-                    measuredNights: measuredCount,
-                    requiredNights: DebtEngineConstants.minimumHistoryNights
-                )
+            let availability = HistoryAvailability.insufficient(
+                measuredNights: measuredCount,
+                requiredNights: DebtEngineConstants.minimumHistoryNights
             )
+            try store.writeHistoryAvailability(availability)
+            if previousAvailability != availability {
+                reloader.reloadAllTimelines()
+            }
             return .insufficientHistory(
                 measuredNights: measuredCount,
                 requiredNights: DebtEngineConstants.minimumHistoryNights
@@ -111,6 +126,9 @@ public enum RefreshCoordinator {
             // fallback rather than a crash, matching WidgetState.classify's
             // own nil handling.
             try store.writeHistoryAvailability(.none)
+            if previousAvailability != HistoryAvailability.none {
+                reloader.reloadAllTimelines()
+            }
             return .noData
         }
 

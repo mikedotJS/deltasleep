@@ -306,6 +306,66 @@ final class RefreshCoordinatorTests: XCTestCase {
         XCTAssertEqual(store.readHistoryAvailability(), HistoryAvailability.none)
     }
 
+    /// The reported symptom: the app showed "10 nuits sur 14" while the
+    /// widget still said 9. Only the `.sufficient` branch used to reload
+    /// timelines, so a changing insufficient-history count never reached
+    /// WidgetKit until the widget's own 6h staleness policy fired.
+    func testWidgetsReloadWhenTheInsufficientHistoryCountChanges() async throws {
+        let cal = utcCalendar()
+        let referenceDate = date(2026, 8, 11, calendar: cal)
+        let store = InMemorySnapshotStore()
+        let reloader = RecordingReloader()
+        let need = SleepNeed(.hours(8))
+
+        _ = try await RefreshCoordinator.refresh(
+            need: need, referenceDate: referenceDate, now: referenceDate, calendar: cal,
+            source: FakeSleepSource(samples: fullHistorySamples(
+                forDays: 9, hours: 8, referenceDate: referenceDate, calendar: cal
+            )),
+            store: store, reloader: reloader
+        )
+        XCTAssertEqual(reloader.reloadCount, 1, "first write of .insufficient(9) must reload")
+
+        // A tenth night lands — the count on disk changes, so the widget
+        // has to be told.
+        let outcome = try await RefreshCoordinator.refresh(
+            need: need, referenceDate: referenceDate, now: referenceDate, calendar: cal,
+            source: FakeSleepSource(samples: fullHistorySamples(
+                forDays: 10, hours: 8, referenceDate: referenceDate, calendar: cal
+            )),
+            store: store, reloader: reloader
+        )
+
+        XCTAssertEqual(outcome, .insufficientHistory(measuredNights: 10, requiredNights: 14))
+        XCTAssertEqual(reloader.reloadCount, 2, "9 → 10 must reload the widget")
+    }
+
+    /// The other half of the same rule: WidgetKit's reload budget is finite
+    /// and refreshes fire on every scene activation, so an unchanged count
+    /// must NOT spend a reload.
+    func testAnUnchangedInsufficientHistoryCountDoesNotReloadWidgets() async throws {
+        let cal = utcCalendar()
+        let referenceDate = date(2026, 8, 11, calendar: cal)
+        let samples = fullHistorySamples(
+            forDays: 9, hours: 8, referenceDate: referenceDate, calendar: cal
+        )
+        let source = FakeSleepSource(samples: samples)
+        let store = InMemorySnapshotStore()
+        let reloader = RecordingReloader()
+        let need = SleepNeed(.hours(8))
+
+        _ = try await RefreshCoordinator.refresh(
+            need: need, referenceDate: referenceDate, now: referenceDate, calendar: cal,
+            source: source, store: store, reloader: reloader
+        )
+        _ = try await RefreshCoordinator.refresh(
+            need: need, referenceDate: referenceDate, now: referenceDate, calendar: cal,
+            source: source, store: store, reloader: reloader
+        )
+
+        XCTAssertEqual(reloader.reloadCount, 1, "still just the first write's reload")
+    }
+
     /// Audit fix #9: the snapshot must be written before availability
     /// flips to `.sufficient`, so an interruption between the two writes
     /// never leaves `.sufficient` paired with a stale/missing snapshot.
