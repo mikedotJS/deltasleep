@@ -23,3 +23,9 @@ Packages/*/.swiftpm/
 
 # macOS
 .DS_Store
+.env
+.env.*
+*.pem
+*.p12
+!.env.example
+node_modules
